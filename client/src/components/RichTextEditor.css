@@ -1,0 +1,60 @@
+/* Basic styling for Tiptap editor wrapper and toolbar */
+.tiptap-editor-wrapper {
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.375rem; /* rounded-md */
+  overflow: hidden; /* To keep rounded corners with toolbar */
+}
+
+.tiptap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.25rem; /* p-1 */
+  border-bottom: 1px solid #d1d5db; /* gray-300 */
+  background-color: #f9fafb; /* gray-50 */
+}
+
+.tiptap-toolbar button {
+  font-family: sans-serif;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem; /* py-1 px-2 */
+  margin: 0.125rem; /* m-0.5 */
+  border: 1px solid transparent;
+  border-radius: 0.25rem; /* rounded */
+  background-color: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.tiptap-toolbar button:hover {
+  background-color: #e5e7eb; /* gray-200 */
+  border-color: #d1d5db; /* gray-300 */
+}
+
+.tiptap-toolbar button.is-active {
+  background-color: #6366f1; /* indigo-600 */
+  color: white;
+  border-color: #4f46e5; /* indigo-700 */
+}
+
+.tiptap-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ProseMirror editor content styling */
+.ProseMirror {
+  padding: 0.5rem; /* p-2 */
+  min-height: 150px;
+  outline: none;
+  /* Tailwind prose classes are applied via editorProps, 
+     but you can add more specific overrides here if needed */
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
