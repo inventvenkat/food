@@ -1,19 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Ensure useEffect is imported once
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import './RichTextEditor.css'; // We'll create this for basic styling
+import './RichTextEditor.css';
 
 const RichTextEditor = ({ value, onChange, placeholder }) => {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         // Configure StarterKit options here if needed
-        // For example, to disable some tools:
         // heading: { levels: [1, 2, 3] },
-        // history: true, // Enable history (undo/redo)
-        // document: true, // Keep this
-        // paragraph: true, // Keep this
-        // text: true, // Keep this
+        // history: true,
+        // document: true,
+        // paragraph: true,
+        // text: true,
         // bold: {},
         // italic: {},
         // strike: {},
@@ -25,11 +24,9 @@ const RichTextEditor = ({ value, onChange, placeholder }) => {
         // hardBreak: {},
         // codeBlock: {},
         // code: {},
-        // gapcursor: {}, // for tables or other complex nodes
-        // dropcursor: {}, // for drag and drop
       }),
     ],
-    content: value || '',
+    content: value || '', // Initialize with value
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -40,11 +37,23 @@ const RichTextEditor = ({ value, onChange, placeholder }) => {
     },
   });
 
+  // Effect to update editor content when the `value` prop changes externally
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      // Use a try-catch block in case setContent fails or if value is not valid HTML
+      try {
+        editor.commands.setContent(value || '', false); // 'false' to not emit update event
+      } catch (error) {
+        console.error("Error setting Tiptap content:", error);
+        // Fallback or error handling if needed
+      }
+    }
+  }, [value, editor]); // Rerun effect if value or editor instance changes
+
   if (!editor) {
     return null;
   }
 
-  // Basic toolbar (can be expanded significantly)
   const Toolbar = () => (
     <div className="tiptap-toolbar border border-gray-300 rounded-t-md p-1 space-x-1 bg-gray-50">
       <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} disabled={!editor.can().chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'is-active' : ''}>B</button>

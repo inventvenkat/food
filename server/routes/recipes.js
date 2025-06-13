@@ -6,6 +6,22 @@ const authMiddleware = require('../middleware/authMiddleware');
 const Recipe = require('../models/Recipe');
 const User = require('../models/User'); // May not be needed directly if populated
 const MealPlan = require('../models/MealPlan'); // Import MealPlan model for cascade delete
+const multer = require('multer');
+const { extractTextFromFile, customIngredientParser } = require('../utils/recipeParser');
+
+// Configure multer for in-memory file storage for recipe text extraction
+const recipeUploadParser = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for uploaded files
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only .txt, .pdf, .doc, .docx are allowed.'), false);
+    }
+  }
+});
 
 // --- PUBLIC ROUTES (Define before parameterized routes like /:id) ---
 
@@ -85,10 +101,10 @@ router.post('/', authMiddleware, (req, res) => {
     try {
       const newRecipe = new Recipe({
         name, description, cookingTime, servings, instructions, image: imageUrl, category,
-        tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim()).filter(tag => tag)) : [], 
-        ingredients, 
+        tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim()).filter(tag => tag)) : [],
+        ingredients,
         isPublic: isPublic === 'true' || isPublic === true,
-        user: req.user.id, 
+        user: req.user.id,
       });
       const recipe = await newRecipe.save();
       res.status(201).json(recipe);
@@ -101,6 +117,33 @@ router.post('/', authMiddleware, (req, res) => {
     }
   });
 });
+
+// @route   POST /api/recipes/upload-extract
+// @desc    Upload a recipe file, extract text, and parse ingredients
+// @access  Private
+router.post('/upload-extract', authMiddleware, recipeUploadParser.single('recipeFile'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded or file type rejected.' });
+  }
+
+  try {
+    const textContent = await extractTextFromFile(req.file);
+    const parsedRecipeData = customIngredientParser(textContent); // This now returns an object
+
+    // The parsedRecipeData should be like:
+    // { title: '', description: '', cookingTime: '', servings: '', ingredients: [], instructions: '' }
+
+    res.json(parsedRecipeData); // Return the whole object
+  } catch (error) {
+    console.error('Error processing uploaded recipe file:', error.message);
+    // Check if the error is from our custom file type validation or parser
+    if (error.message.startsWith('Unsupported file type') || error.message.startsWith('Invalid file object') || error.message.includes('Could not extract text')) {
+        return res.status(400).json({ message: error.message });
+    }
+    res.status(500).send('Server Error during recipe file processing.');
+  }
+});
+
 
 // @route   GET /api/recipes
 // @desc    Get all recipes for the logged-in user
@@ -117,7 +160,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // @route   GET /api/recipes/search
 // @desc    Search recipes by text query (user's own and public)
-// @access  Private 
+// @access  Private
 router.get('/search', authMiddleware, async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ message: 'Search query is required.' });
@@ -139,7 +182,7 @@ router.get('/search', authMiddleware, async (req, res) => {
 
 // @route   GET /api/recipes/:id
 // @desc    Get a specific recipe by ID (owned by user)
-// @access  Private 
+// @access  Private
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const recipe = await Recipe.findById(req.params.id);
@@ -201,7 +244,7 @@ router.put('/:id', authMiddleware, (req, res) => {
           });
         }
       } else if (imageFromBody === '' && req.body.hasOwnProperty('image')) {
-        recipeFieldsToUpdate.image = ''; 
+        recipeFieldsToUpdate.image = '';
         if (oldImagePath && oldImagePath.startsWith('/uploads/recipe_images/')) {
           fs.unlink(path.join(__dirname, '..', oldImagePath), (unlinkErr) => { // Corrected path for unlink
             if (unlinkErr) console.error(`Failed to delete old image ${oldImagePath} (on clear):`, unlinkErr.message);

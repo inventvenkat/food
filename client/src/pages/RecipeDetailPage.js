@@ -9,6 +9,25 @@ const RecipeDetailPage = () => {
   const [error, setError] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
 
+  // State for Text-to-Speech
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  // eslint-disable-next-line no-unused-vars
+  const [speechError, setSpeechError] = useState('');
+
+
+  useEffect(() => {
+    // Cleanup speech synthesis on component unmount or when recipeId changes
+    return () => {
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+      setIsPaused(false);
+      setSpeechError('');
+    };
+  }, [recipeId]);
+
   useEffect(() => {
     // Get current user ID from token
     const token = localStorage.getItem('token');
@@ -40,7 +59,7 @@ const RecipeDetailPage = () => {
           console.log('Attempting to fetch as public recipe...');
           response = await fetch(`/api/recipes/public/${recipeId}`);
         }
-        
+
         if (!response || !response.ok) {
           let errData = {};
           try {
@@ -48,7 +67,7 @@ const RecipeDetailPage = () => {
           } catch(e) { /* ignore if response is not json */ }
           throw new Error(errData.message || `Failed to fetch recipe (status: ${response ? response.status : 'unknown'})`);
         }
-        
+
         const data = await response.json();
         setRecipe(data);
 
@@ -66,11 +85,11 @@ const RecipeDetailPage = () => {
       setError('No recipe ID provided.');
       setLoading(false);
     }
-  }, [recipeId, navigate]); 
+  }, [recipeId, navigate]);
 
   const handleTogglePublicStatus = async () => {
-    const isOwner = recipe && recipe.user && currentUserId && 
-                    ( (typeof recipe.user === 'string' && recipe.user === currentUserId) || 
+    const isOwner = recipe && recipe.user && currentUserId &&
+                    ( (typeof recipe.user === 'string' && recipe.user === currentUserId) ||
                       (recipe.user._id && recipe.user._id === currentUserId) );
 
     if (!recipe || !isOwner) {
@@ -129,7 +148,7 @@ const RecipeDetailPage = () => {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to delete recipe');
       }
-      
+
       alert('Recipe deleted successfully.');
       navigate('/my-recipes'); // Navigate back to the list of recipes
 
@@ -143,6 +162,80 @@ const RecipeDetailPage = () => {
   if (loading) return <div className="text-center p-10">Loading recipe details...</div>;
   if (error) return <div className="text-center p-10 text-red-600">Error: {error}</div>;
   if (!recipe) return <div className="text-center p-10">Recipe not found.</div>;
+
+  const getRecipeTextForSpeech = () => {
+    if (!recipe) return "";
+    let text = `Recipe: ${recipe.name}.\n\n`;
+    if (recipe.description) {
+      text += `Description: ${recipe.description}.\n\n`;
+    }
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+      text += "Ingredients:\n";
+      recipe.ingredients.forEach(ing => {
+        text += `${ing.quantity || ''} ${ing.unit || ''} ${ing.name}.\n`;
+      });
+      text += "\n";
+    }
+    if (recipe.instructions) {
+      text += "Instructions:\n";
+      // Strip HTML from instructions for speech
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = recipe.instructions;
+      text += tempDiv.textContent || tempDiv.innerText || "";
+      text += "\n";
+    }
+    return text;
+  };
+
+  const handlePlayPauseAudio = () => {
+    if (!window.speechSynthesis) {
+      setSpeechError("Your browser does not support speech synthesis.");
+      return;
+    }
+    setSpeechError('');
+
+    if (isSpeaking) {
+      if (isPaused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+      } else {
+        window.speechSynthesis.pause();
+        setIsPaused(true);
+      }
+    } else {
+      const recipeText = getRecipeTextForSpeech();
+      if (!recipeText.trim()) {
+        setSpeechError("No content to read.");
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(recipeText);
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setIsPaused(false);
+      };
+      utterance.onerror = (event) => {
+        console.error("Speech synthesis error", event);
+        setSpeechError(`Speech error: ${event.error}`);
+        setIsSpeaking(false);
+        setIsPaused(false);
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleStopAudio = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setSpeechError('');
+  };
+
 
   // Debugging logs for button visibility
   console.log("RecipeDetailPage: currentUserId:", currentUserId);
@@ -160,8 +253,32 @@ const RecipeDetailPage = () => {
           <img src={recipe.image} alt={recipe.name} className="w-full h-64 sm:h-80 md:h-96 object-cover" />
         )}
         <div className="p-6">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-800">{recipe.name}</h1>
-          
+          <div className="flex justify-between items-start mb-4">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex-grow">{recipe.name}</h1>
+            {/* TTS Controls */}
+            <div className="flex space-x-2 flex-shrink-0 ml-4">
+              <button
+                onClick={handlePlayPauseAudio}
+                className={`px-3 py-2 rounded-md text-white font-semibold text-sm transition-colors ${
+                  isSpeaking && !isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-500 hover:bg-blue-600'
+                }`}
+                title={isSpeaking && !isPaused ? "Pause Audio" : (isPaused ? "Resume Audio" : "Play Audio")}
+              >
+                {isSpeaking && !isPaused ? 'Pause' : (isPaused ? 'Resume' : 'Play Audio')}
+              </button>
+              {isSpeaking && (
+                <button
+                  onClick={handleStopAudio}
+                  className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm rounded-md transition-colors"
+                  title="Stop Audio"
+                >
+                  Stop
+                </button>
+              )}
+            </div>
+          </div>
+          {speechError && <p className="text-red-500 text-sm mb-2">{speechError}</p>}
+
           <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-6 items-center">
             {recipe.category && <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">Category: {recipe.category}</span>}
             {recipe.cookingTime && <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">Time: {recipe.cookingTime}</span>}
@@ -196,7 +313,7 @@ const RecipeDetailPage = () => {
               <div className="prose prose-sm sm:prose lg:prose-lg max-w-none" dangerouslySetInnerHTML={{ __html: recipe.instructions }} />
             </div>
           )}
-          
+
           {recipe.tags && recipe.tags.length > 0 && (
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-gray-700 mb-2">Tags</h2>
@@ -211,19 +328,19 @@ const RecipeDetailPage = () => {
           <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap gap-4">
             {recipe.user && currentUserId === (typeof recipe.user === 'string' ? recipe.user : recipe.user._id) && (
               <>
-                <Link 
-                  to={`/edit-recipe/${recipe._id}`} 
+                <Link
+                  to={`/edit-recipe/${recipe._id}`}
                   className="btn-primary" // Using Tailwind apply classes from EditRecipePage for consistency
                 >
                   Edit Recipe
                 </Link>
-                <button 
+                <button
                   onClick={handleDelete}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 >
                   Delete Recipe
                 </button>
-                <button 
+                <button
                   onClick={handleTogglePublicStatus}
                   className={`${recipe.isPublic ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}
                 >
