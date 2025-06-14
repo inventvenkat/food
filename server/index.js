@@ -62,6 +62,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // TODO: Initialize DynamoDB client here if needed globally, or in specific route/service files.
 // For now, assuming DynamoDB client will be initialized and used within route handlers or a data access layer.
 
+const { initializeDatabase } = require('./config/init-dynamodb'); // Import the initializer
+
 // Routes
 const authRoutes = require('./routes/auth');
 const recipeRoutes = require('./routes/recipes');
@@ -80,6 +82,12 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Hello from the Recipe App API!' });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+// Initialize DynamoDB tables before starting the server
+initializeDatabase().then(() => {
+  app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}).catch(err => {
+  console.error("Failed to initialize database or start server:", err);
+  process.exit(1);
 });
