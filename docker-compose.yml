@@ -1,0 +1,62 @@
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3003:80" # Changed host port to 3003 to avoid conflict
+    depends_on:
+      - server
+    networks:
+      - app-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3001" # Changed host port to 3002 to avoid conflict
+    environment:
+      # For current Mongoose setup (pre-DynamoDB refactor):
+      # - MONGODB_URI=mongodb://mongo:27017/recipe_app_db # Points to the mongo service below
+      - JWT_SECRET=yourSuperSecretKeyForJWTs # Change this in a real .env file for compose
+      - PORT=3001
+      # --- Lines to uncomment/modify AFTER refactoring server for DynamoDB Local ---
+      - DYNAMODB_ENDPOINT_OVERRIDE=http://dynamodb-local:8000
+      - AWS_ACCESS_KEY_ID=dummy # For DynamoDB Local
+      - AWS_SECRET_ACCESS_KEY=dummy # For DynamoDB Local
+      - AWS_REGION=localhost # Or any valid region string, e.g., us-east-1, for DynamoDB Local
+    volumes:
+      - ./server/uploads:/usr/src/app/uploads # Persist uploads locally if needed during dev
+    depends_on:
+      # - mongo # Initially depends on Mongo
+      - dynamodb-local # Uncomment after refactoring to DynamoDB
+    networks:
+      - app-network
+
+  # mongo: # MongoDB service for current setup - Commented out for DynamoDB setup
+  #   image: mongo:latest
+  #   ports:
+  #     - "27018:27017" # Changed host port to 27018 to avoid conflict
+  #   volumes:
+  #     - mongo-data:/data/db
+  #   networks:
+  #     - app-network
+
+  dynamodb-local: # For use AFTER server refactoring
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000" # Expose DynamoDB Local on host port 8000
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/" # Persist data within the container volume
+    volumes:
+      - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
+    networks:
+      - app-network
+
+volumes:
+  mongo-data:
+  dynamodb-local-data:
+
+networks:
+  app-network:
+    driver: bridge

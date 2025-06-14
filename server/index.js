@@ -1,6 +1,6 @@
 require('dotenv').config(); // Load environment variables
 const express = require('express');
-const mongoose = require('mongoose'); // Require Mongoose
+// const mongoose = require('mongoose'); // Mongoose removed for DynamoDB migration
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -44,20 +44,23 @@ app.locals.upload = upload; // Example of making it available globally, or pass 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- End Multer Setup ---
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI;
+// MongoDB Connection Logic (Removed for DynamoDB Migration)
+// const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  console.error('Error: MONGODB_URI is not defined. Please check your .env file.');
-  process.exit(1); // Exit if MongoDB URI is not defined
-}
+// if (!MONGODB_URI) {
+//   console.error('Error: MONGODB_URI is not defined. Please check your .env file.');
+//   process.exit(1); // Exit if MongoDB URI is not defined
+// }
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Successfully connected to MongoDB'))
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1); // Exit on connection error
-  });
+// mongoose.connect(MONGODB_URI)
+//   .then(() => console.log('Successfully connected to MongoDB'))
+//   .catch(err => {
+//     console.error('MongoDB connection error:', err);
+//     process.exit(1); // Exit on connection error
+//   });
+
+// TODO: Initialize DynamoDB client here if needed globally, or in specific route/service files.
+// For now, assuming DynamoDB client will be initialized and used within route handlers or a data access layer.
 
 // Routes
 const authRoutes = require('./routes/auth');

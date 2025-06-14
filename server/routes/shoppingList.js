@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const Recipe = require('../models/Recipe');
-const MealPlan = require('../models/MealPlan'); // Import MealPlan model
+const { getRecipeById } = require('../models/Recipe'); // To fetch recipe details
+const { getMealPlanEntriesForUserAndDateRange } = require('../models/MealPlan');
 
 // Simple ingredient to category mapping (can be expanded)
 const ingredientToCategoryMap = {
@@ -41,140 +41,128 @@ const getCategory = (ingredientName) => {
   return 'Other'; // Default category
 };
 
-// Helper function to parse and scale quantity
-// Tries to handle "1/2", "0.5", "1", "1-2", "1 pinch"
+// Helper function to parse and scale quantity (remains the same)
 function parseAndScaleQuantity(quantityStr, scaleFactor) {
   if (typeof quantityStr !== 'string' && typeof quantityStr !== 'number') {
-    // If it's not a string or number (e.g. undefined, null from bad data), return as is or a default
-    return quantityStr || ''; 
+    return quantityStr || '';
   }
-  if (scaleFactor === 1) return String(quantityStr); // No scaling needed
+  if (scaleFactor === 1) return String(quantityStr);
 
   let quantity = String(quantityStr).toLowerCase().trim();
   let numericPart = null;
   let textPart = '';
 
-  // Handle "a pinch", "an egg" -> "1 pinch", "1 egg" for scaling
   if (quantity.startsWith('a ') && quantity.length > 2) {
     quantity = '1 ' + quantity.substring(2);
   } else if (quantity.startsWith('an ') && quantity.length > 3) {
     quantity = '1 ' + quantity.substring(3);
   }
-  
-  const fractionMatch = quantity.match(/^(\d+)\s*\/\s*(\d+)/); 
-  const decimalMatch = quantity.match(/^(\d*\.?\d+)/); 
-  const rangeMatch = quantity.match(/^(\d+)\s*-\s*(\d+)/); 
-  
+
+  const fractionMatch = quantity.match(/^(\d+)\s*\/\s*(\d+)/);
+  const decimalMatch = quantity.match(/^(\d*\.?\d+)/);
+  const rangeMatch = quantity.match(/^(\d+)\s*-\s*(\d+)/);
+
   if (fractionMatch) {
     numericPart = parseFloat(fractionMatch[1]) / parseFloat(fractionMatch[2]);
     textPart = quantity.substring(fractionMatch[0].length).trim();
   } else if (rangeMatch) {
     const scaledMin = parseFloat(rangeMatch[1]) * scaleFactor;
     const scaledMax = parseFloat(rangeMatch[2]) * scaleFactor;
-    textPart = quantity.replace(/^(\d+)\s*-\s*(\d+)/, '').trim(); // Get text after range
+    textPart = quantity.replace(/^(\d+)\s*-\s*(\d+)/, '').trim();
     return `${Number(scaledMin.toFixed(2))}-${Number(scaledMax.toFixed(2))}${textPart ? ' ' + textPart : ''}`;
   } else if (decimalMatch) {
     numericPart = parseFloat(decimalMatch[1]);
     textPart = quantity.substring(decimalMatch[1].length).trim();
   } else {
-    // No number at the start, might be just text or text with number later (e.g. "eggs 2") - not handled here
     textPart = quantity;
   }
 
   if (numericPart !== null) {
     const scaledNumericPart = numericPart * scaleFactor;
-    const finalNumeric = Number(scaledNumericPart.toFixed(2)); 
-    // If original textPart was empty and finalNumeric is integer, display as integer
+    const finalNumeric = Number(scaledNumericPart.toFixed(2));
     if (textPart === '' && Number.isInteger(finalNumeric)) {
         return String(parseInt(finalNumeric, 10));
     }
     return `${finalNumeric}${textPart ? ' ' + textPart : ''}`;
   }
-  
-  // If it was purely text like "to taste", return as is.
-  // If it was like "pinch" and scaleFactor is > 1, return "X pinches"
-  if (textPart === quantity && !textPart.match(/^\d/)) { // Purely text
+
+  if (textPart === quantity && !textPart.match(/^\d/)) {
       if ((textPart === "pinch" || textPart === "clove") && scaleFactor > 1 && Number.isInteger(scaleFactor)) {
           return `${parseInt(scaleFactor, 10)} ${textPart}${scaleFactor > 1 ? 's' : ''}`;
       }
-      return quantityStr; // Return original for "to taste" etc.
+      return quantityStr;
   }
-  
-  return quantityStr; // Fallback
+  return quantityStr;
 }
 
 // @route   POST /api/shopping-list/generate
 // @desc    Generate a shopping list for a given date range from meal plan
 // @access  Private
 router.post('/generate', authMiddleware, async (req, res) => {
-  const { startDate, endDate } = req.body; 
+  const { startDate, endDate } = req.body;
+  const userId = req.user.id;
 
+  // TODO: Add robust date validation
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'Please provide both start and end dates.' });
   }
 
   try {
-    const mealPlanQuery = {
-      user: req.user.id,
-      date: {
-        $gte: new Date(new Date(startDate).setHours(0, 0, 0, 0)), // Start of the startDate
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)) // End of the endDate
-      }
-    };
-    
-    const mealPlanEntries = await MealPlan.find(mealPlanQuery)
-      .populate({
-          path: 'recipe', // Populate the recipe for each meal plan entry
-          populate: { path: 'ingredients' } // Ensure ingredients are populated within the recipe object
-      });
+    // Fetch all meal plan entries for the user in the date range
+    // Note: getMealPlanEntriesForUserAndDateRange handles pagination internally if we fetch all.
+    // For very large ranges/many entries, this might need to be batched.
+    let allMealPlanEntries = [];
+    let lastKey = null;
+    do {
+        const { entries, lastEvaluatedKey: newLek } = await getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate, 100, lastKey);
+        allMealPlanEntries.push(...entries);
+        lastKey = newLek;
+    } while (lastKey);
 
-    if (mealPlanEntries.length === 0) {
-      return res.status(200).json({}); // Return empty list if no meals in range
+    if (allMealPlanEntries.length === 0) {
+      return res.status(200).json({}); // Return empty object if no meals in range
     }
 
     const aggregatedIngredients = {};
 
-    mealPlanEntries.forEach(entry => {
-      if (!entry.recipe || !entry.recipe.ingredients || !entry.recipe.servings || !entry.plannedServings) {
-        console.warn(`Skipping meal plan entry ${entry._id} due to missing critical data (recipe, ingredients, recipe.servings, or plannedServings).`);
-        return; 
+    for (const entry of allMealPlanEntries) {
+      if (!entry.recipeId || !entry.plannedServings) {
+        console.warn(`Skipping meal plan entry ${entry.mealPlanId} due to missing recipeId or plannedServings.`);
+        continue;
       }
 
-      const recipeDefaultServings = entry.recipe.servings;
-      if (recipeDefaultServings === 0) { // Avoid division by zero
-        console.warn(`Skipping recipe ${entry.recipe._id} in meal plan entry ${entry._id} due to recipe default servings being 0.`);
-        return;
-      }
-      const scaleFactor = entry.plannedServings / recipeDefaultServings;
+      // Fetch the recipe details for each meal plan entry
+      // The recipeId from meal plan should be like "RECIPE#<uuid>"
+      const recipeDetails = await getRecipeById(entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId);
 
-      entry.recipe.ingredients.forEach(ing => {
+      if (!recipeDetails || !recipeDetails.ingredients || recipeDetails.servings === undefined || recipeDetails.servings === 0) {
+        console.warn(`Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);
+        continue;
+      }
+
+      const scaleFactor = entry.plannedServings / recipeDetails.servings;
+
+      recipeDetails.ingredients.forEach(ing => {
         if (!ing.name || ing.quantity === undefined || ing.unit === undefined) {
-          console.warn(`Skipping ingredient in recipe ${entry.recipe._id} due to missing fields (name, quantity, or unit).`);
+          console.warn(`Skipping ingredient in recipe ${recipeDetails.recipeId} due to missing fields.`);
           return;
         }
         const scaledQuantityStr = parseAndScaleQuantity(ing.quantity, scaleFactor);
-        const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`; // Key by name and unit
+        const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`;
 
         if (aggregatedIngredients[key]) {
-          const existingQtyStr = aggregatedIngredients[key].quantity;
-          const currentNumeric = parseFloat(existingQtyStr);
+          // Basic aggregation: sum quantities if possible, otherwise concatenate
+          // This part might need more sophisticated logic for combining quantities like "1 cup" + "0.5 cup"
+          // For simplicity, if both are numbers, sum. Otherwise, append.
+          const existingQty = aggregatedIngredients[key].quantity;
+          const currentNumeric = parseFloat(existingQty);
           const newNumericAddition = parseFloat(scaledQuantityStr);
 
           if (!isNaN(currentNumeric) && !isNaN(newNumericAddition)) {
-            // Both are numbers, sum them
-            aggregatedIngredients[key].quantity = (currentNumeric + newNumericAddition).toString();
-            // If original had text part, try to retain it if it makes sense (e.g. "2 cups" + "1 cup" -> "3 cups")
-            // This part is tricky; for now, just sum numbers. Text part might be lost if not handled carefully.
-            // The parseAndScaleQuantity should return "value unit" string.
-            // We need to parse out the numeric part of existing and new scaled quantity for summing.
             const unitText = scaledQuantityStr.replace(/^[\d\.-]+/, '').trim();
-            if (unitText) {
-                 aggregatedIngredients[key].quantity += ` ${unitText}`;
-            }
-
+            aggregatedIngredients[key].quantity = (currentNumeric + newNumericAddition).toString() + (unitText ? ` ${unitText}` : '');
           } else {
-            // If one or both are not simple numbers (e.g., "to taste", or "1 + 1/2 cup")
-            aggregatedIngredients[key].quantity = `${existingQtyStr} + ${scaledQuantityStr}`;
+            aggregatedIngredients[key].quantity = `${existingQty} + ${scaledQuantityStr}`;
           }
         } else {
           aggregatedIngredients[key] = {
@@ -184,8 +172,8 @@ router.post('/generate', authMiddleware, async (req, res) => {
           };
         }
       });
-    });
-    
+    }
+
     const shoppingListCategorized = {};
     Object.values(aggregatedIngredients).forEach(ing => {
       const category = getCategory(ing.name);

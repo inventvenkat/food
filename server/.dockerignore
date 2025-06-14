@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Node modules
+node_modules
+
+# Optional: Local env files
+.env
+.env.*
+
+# Debugging logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Uploads directory - typically you'd use a volume for this in production
+# or a cloud storage service like S3. For now, excluding it from the image.
+uploads/
+
+# Editor directories and files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

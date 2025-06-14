@@ -1,274 +1,281 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const authMiddleware = require('../middleware/authMiddleware');
-const RecipeCollection = require('../models/RecipeCollection');
-const Recipe = require('../models/Recipe'); // To validate recipes being added
-const mongoose = require('mongoose');
+const {
+  createRecipeCollection,
+  getRecipeCollectionById,
+  getRecipeCollectionsByAuthor,
+  getPublicRecipeCollections,
+  updateRecipeCollection,
+  deleteRecipeCollection,
+  addRecipeToCollection,
+  removeRecipeFromCollection
+} = require('../models/RecipeCollection');
+// No longer need Recipe model here directly for validation if IDs are treated as opaque strings by routes
+// const mongoose = require('mongoose'); // Mongoose removed
+
+// Multer setup (assuming it's defined in app.locals.upload as in other route files)
+// If not, it should be configured here similarly to recipes.js or globally.
 
 // @route   POST /api/collections
 // @desc    Create a new recipe collection
 // @access  Private
 router.post('/', authMiddleware, (req, res) => {
-    const uploadSingle = req.app.locals.upload.single('collectionCoverImage');
+  const uploadSingle = req.app.locals.upload.single('collectionCoverImage');
 
-    uploadSingle(req, res, async (err) => {
-        if (err) {
-            return res.status(400).json({ message: err.message || 'Error uploading cover image.' });
+  uploadSingle(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ message: uploadErr.message || 'Error uploading cover image.' });
+    }
+
+    const { name, description, recipes: recipesJSON, isPublic } = req.body;
+    const authorId = `USER#${req.user.id}`;
+    const authorUsername = req.user.username;
+
+    // TODO: Add comprehensive input validation
+    if (!name) {
+      return res.status(400).json({ message: 'Collection name is required.' });
+    }
+
+    let recipeIds = [];
+    if (recipesJSON) {
+      try {
+        recipeIds = JSON.parse(recipesJSON);
+        if (!Array.isArray(recipeIds) || !recipeIds.every(id => typeof id === 'string' && id.startsWith('RECIPE#'))) {
+          // Basic check for string and prefix, more robust validation might be needed
+          return res.status(400).json({ message: 'Invalid recipe IDs format. Expected array of RECIPE#<id> strings.' });
         }
+      } catch (e) {
+        return res.status(400).json({ message: 'Error parsing recipe IDs.' });
+      }
+    }
 
-        const { name, description, recipes: recipesJSON, isPublic } = req.body;
-        const userId = req.user.id;
+    let coverImageUrl = req.body.coverImage || '';
+    if (req.file) {
+      coverImageUrl = `/uploads/recipe_images/${req.file.filename}`; // Using same dir as recipe images
+    }
 
-        if (!name) {
-            return res.status(400).json({ message: 'Collection name is required.' });
-        }
-
-        let recipeIds = [];
-        if (recipesJSON) {
-            try {
-                recipeIds = JSON.parse(recipesJSON);
-                if (!Array.isArray(recipeIds) || !recipeIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
-                    return res.status(400).json({ message: 'Invalid recipe IDs format.' });
-                }
-            } catch (e) {
-                return res.status(400).json({ message: 'Error parsing recipe IDs.' });
-            }
-        }
-        
-        let coverImageUrl = req.body.coverImage || '';
-        if (req.file) {
-            coverImageUrl = `/uploads/recipe_images/${req.file.filename}`; // Assuming same dir for now
-        }
-
-        try {
-            // Optional: Validate that all recipeIds exist and belong to the user if collections are strictly personal
-            // For now, we assume valid recipe IDs are provided.
-
-            const newCollection = new RecipeCollection({
-                name,
-                description: description || '',
-                user: userId,
-                recipes: recipeIds,
-                isPublic: isPublic === 'true' || isPublic === true,
-                coverImage: coverImageUrl,
-            });
-
-            const savedCollection = await newCollection.save();
-            // Populate user and recipes for the response
-            const populatedCollection = await RecipeCollection.findById(savedCollection._id)
-                .populate('user', 'username')
-                .populate('recipes', 'name image cookingTime servings'); // Populate some recipe details
-
-            res.status(201).json(populatedCollection);
-        } catch (dbErr) {
-            console.error('Error creating collection:', dbErr);
-            if (dbErr.name === 'ValidationError') {
-                return res.status(400).json({ message: Object.values(dbErr.errors).map(val => val.message).join(', ') });
-            }
-            res.status(500).send('Server Error');
-        }
-    });
+    try {
+      const collectionData = {
+        name,
+        description: description || '',
+        recipes: recipeIds, // Will be stored as a list of strings
+        isPublic: isPublic === 'true' || isPublic === true,
+        coverImage: coverImageUrl,
+      };
+      const newCollection = await createRecipeCollection({ collectionData, authorId, authorUsername });
+      res.status(201).json(newCollection);
+    } catch (dbErr) {
+      console.error('Error creating collection:', dbErr);
+      res.status(500).send('Server Error');
+    }
+  });
 });
 
 // @route   GET /api/collections
-// @desc    Get all collections for the logged-in user
+// @desc    Get all collections for the logged-in user (paginated)
 // @access  Private
 router.get('/', authMiddleware, async (req, res) => {
-    try {
-        const collections = await RecipeCollection.find({ user: req.user.id })
-            .populate('user', 'username')
-            .populate('recipes', 'name image') // Populate only essential recipe info for list view
-            .sort({ createdAt: -1 });
-        res.json(collections);
-    } catch (err) {
-        console.error('Error fetching user collections:', err);
-        res.status(500).send('Server Error');
-    }
+  const limit = parseInt(req.query.limit) || 10;
+  const lastEvaluatedKey = req.query.lek ? JSON.parse(decodeURIComponent(req.query.lek)) : null;
+  const authorId = req.user.id; // Just the UUID part from token
+
+  try {
+    const { collections, lastEvaluatedKey: newLek } = await getRecipeCollectionsByAuthor(authorId, limit, lastEvaluatedKey);
+    // Collections will contain recipe IDs. Client can fetch recipe details if needed.
+    res.json({
+      collections,
+      nextLek: newLek ? encodeURIComponent(JSON.stringify(newLek)) : null,
+    });
+  } catch (err) {
+    console.error('Error fetching user collections:', err);
+    res.status(500).send('Server Error');
+  }
 });
 
 // @route   GET /api/collections/public
 // @desc    Get all public collections (paginated)
 // @access  Public
 router.get('/public', async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 9; // Default to 9 per page
-  const skip = (page - 1) * limit;
+  const limit = parseInt(req.query.limit) || 9;
+  const lastEvaluatedKey = req.query.lek ? JSON.parse(decodeURIComponent(req.query.lek)) : null;
 
   try {
-    const publicCollections = await RecipeCollection.find({ isPublic: true })
-      .populate('user', 'username') // Populate owner's username
-      .populate('recipes', 'name') // Populate recipe names, or count
-      .sort({ createdAt: -1 })    // Sort by newest first
-      .skip(skip)
-      .limit(limit);
-    
-    const totalPublicCollections = await RecipeCollection.countDocuments({ isPublic: true });
-
+    const { collections, lastEvaluatedKey: newLek } = await getPublicRecipeCollections(limit, lastEvaluatedKey);
+    // Collections will contain recipe IDs and denormalized authorUsername.
     res.json({
-      collections: publicCollections,
-      currentPage: page,
-      totalPages: Math.ceil(totalPublicCollections / limit),
-      totalCollections: totalPublicCollections,
+      collections,
+      nextLek: newLek ? encodeURIComponent(JSON.stringify(newLek)) : null,
     });
-
   } catch (err) {
     console.error('Error fetching public collections:', err);
     res.status(500).send('Server Error');
   }
 });
 
-
 // @route   GET /api/collections/:id
 // @desc    Get a specific collection by ID
-// @access  Public (if collection isPublic) or Private (if owner)
-router.get('/:id', async (req, res) => { 
-    try {
-        const collection = await RecipeCollection.findById(req.params.id)
-            .populate('user', 'username')
-            .populate('recipes'); // Populate full recipe details for collection view
+// @access  Public (if collection isPublic) or Private (if owner, requires auth token)
+router.get('/:id', authMiddleware, async (req, res) => { // Added authMiddleware to simplify owner check
+  try {
+    const collection = await getRecipeCollectionById(req.params.id);
 
-        if (!collection) {
-            return res.status(404).json({ message: 'Collection not found.' });
-        }
-
-        if (!collection.isPublic) {
-            // If private, check ownership using authMiddleware logic (if token provided)
-            // This requires a more flexible auth check or separate endpoints
-            // For now, let's assume if it's not public, it's an error for non-owners.
-            // A better way: use authMiddleware, then check if public or owner.
-            // Let's add authMiddleware and then check.
-            // This means non-logged-in users can't see private collections even if they have the link.
-            // This will be refined when we add the /public collections endpoint.
-            
-            // Re-evaluating: for a single GET /:id, it should allow public access.
-            // If it's private, then it must be the owner.
-            const token = req.header('Authorization');
-            let userId = null;
-            if (token) {
-                try {
-                    const justToken = token.split(' ')[1];
-                    const decoded = require('jsonwebtoken').verify(justToken, process.env.JWT_SECRET);
-                    userId = decoded.user.id;
-                } catch (e) { /* invalid token, treat as guest */ }
-            }
-
-            if (collection.user.toString() !== userId) {
-                 return res.status(403).json({ message: 'Access denied. This collection is private.' });
-            }
-        }
-        
-        res.json(collection);
-    } catch (err) {
-        console.error('Error fetching collection by ID:', err);
-        if (err.kind === 'ObjectId') {
-            return res.status(404).json({ message: 'Collection not found (invalid ID).' });
-        }
-        res.status(500).send('Server Error');
+    if (!collection) {
+      return res.status(404).json({ message: 'Collection not found.' });
     }
+
+    if (!collection.isPublic && collection.authorId !== `USER#${req.user.id}`) {
+      return res.status(403).json({ message: 'Access denied. This collection is private.' });
+    }
+    // Collection contains recipe IDs. Client fetches recipe details if needed.
+    res.json(collection);
+  } catch (err) {
+    console.error('Error fetching collection by ID:', err);
+    res.status(500).send('Server Error');
+  }
 });
 
-
 // @route   PUT /api/collections/:id
-// @desc    Update a collection
+// @desc    Update a collection's details (name, description, isPublic, coverImage)
 // @access  Private
 router.put('/:id', authMiddleware, (req, res) => {
-    const uploadSingle = req.app.locals.upload.single('collectionCoverImage');
+  const uploadSingle = req.app.locals.upload.single('collectionCoverImage');
 
-    uploadSingle(req, res, async (err) => {
-        if (err) {
-            return res.status(400).json({ message: err.message || 'Error uploading cover image for update.' });
+  uploadSingle(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ message: uploadErr.message || 'Error uploading cover image for update.' });
+    }
+
+    const { name, description, isPublic, coverImage: coverImageFromBody } = req.body;
+    const authorId = `USER#${req.user.id}`;
+    const collectionId = req.params.id;
+
+    // TODO: Add comprehensive input validation
+    const fieldsToUpdate = {};
+    if (name !== undefined) fieldsToUpdate.name = name;
+    if (description !== undefined) fieldsToUpdate.description = description;
+    if (isPublic !== undefined) fieldsToUpdate.isPublic = isPublic === 'true' || isPublic === true;
+
+    let oldCoverImagePath = null;
+    if (req.file) {
+      fieldsToUpdate.coverImage = `/uploads/recipe_images/${req.file.filename}`;
+    } else if (coverImageFromBody === '' && req.body.hasOwnProperty('coverImage')) {
+      fieldsToUpdate.coverImage = '';
+    } else if (coverImageFromBody !== undefined) {
+      fieldsToUpdate.coverImage = coverImageFromBody;
+    }
+
+    if (Object.keys(fieldsToUpdate).length === 0) {
+        return res.status(400).json({ message: "No fields to update provided." });
+    }
+
+    try {
+      if (fieldsToUpdate.coverImage !== undefined) { // If image is being changed or cleared
+        const existingCollection = await getRecipeCollectionById(collectionId);
+        if (existingCollection && existingCollection.authorId === authorId && existingCollection.coverImage && existingCollection.coverImage.startsWith('/uploads/recipe_images/')) {
+          if (fieldsToUpdate.coverImage !== existingCollection.coverImage) { // Only if new image is different or cleared
+            oldCoverImagePath = existingCollection.coverImage;
+          }
+        } else if (!existingCollection || existingCollection.authorId !== authorId) {
+          return res.status(403).json({ message: 'User not authorized or collection not found.' });
         }
+      }
 
-        const { name, description, recipes: recipesJSON, isPublic, coverImage: coverImageFromBody } = req.body;
-        const userId = req.user.id;
-        const collectionId = req.params.id;
+      const updatedCollection = await updateRecipeCollection(collectionId, authorId, fieldsToUpdate);
 
-        try {
-            let collection = await RecipeCollection.findById(collectionId);
-            if (!collection) {
-                return res.status(404).json({ message: 'Collection not found.' });
-            }
-            if (collection.user.toString() !== userId) {
-                return res.status(403).json({ message: 'User not authorized to update this collection.' });
-            }
+      if (oldCoverImagePath) {
+        fs.unlink(path.join(__dirname, '..', oldCoverImagePath), (unlinkErr) => {
+          if (unlinkErr) console.error(`Failed to delete old cover image ${oldCoverImagePath}:`, unlinkErr.message);
+        });
+      }
+      res.json(updatedCollection);
+    } catch (dbErr) {
+      console.error('Error updating collection:', dbErr);
+      res.status(500).send('Server Error');
+    }
+  });
+});
 
-            const fieldsToUpdate = {};
-            if (name !== undefined) fieldsToUpdate.name = name;
-            if (description !== undefined) fieldsToUpdate.description = description;
-            if (isPublic !== undefined) fieldsToUpdate.isPublic = isPublic === 'true' || isPublic === true;
+// @route   POST /api/collections/:id/recipes
+// @desc    Add a recipe to a collection
+// @access  Private
+router.post('/:id/recipes', authMiddleware, async (req, res) => {
+  const { recipeId } = req.body; // Expecting a single recipeId like "RECIPE#<uuid>"
+  const collectionId = req.params.id;
+  const authorId = `USER#${req.user.id}`;
 
-            if (recipesJSON !== undefined) {
-                try {
-                    const recipeIds = JSON.parse(recipesJSON);
-                    if (!Array.isArray(recipeIds) || !recipeIds.every(id => mongoose.Types.ObjectId.isValid(id))) {
-                        return res.status(400).json({ message: 'Invalid recipe IDs format for update.' });
-                    }
-                    fieldsToUpdate.recipes = recipeIds;
-                } catch (e) {
-                    return res.status(400).json({ message: 'Error parsing recipe IDs for update.' });
-                }
-            }
-            
-            const oldCoverImagePath = collection.coverImage;
-            if (req.file) { // New image uploaded
-                fieldsToUpdate.coverImage = `/uploads/recipe_images/${req.file.filename}`;
-                if (oldCoverImagePath && oldCoverImagePath.startsWith('/uploads/recipe_images/')) {
-                    // TODO: Delete old image from fs
-                }
-            } else if (coverImageFromBody === '' && req.body.hasOwnProperty('coverImage')) {
-                fieldsToUpdate.coverImage = ''; // Remove image
-                if (oldCoverImagePath && oldCoverImagePath.startsWith('/uploads/recipe_images/')) {
-                    // TODO: Delete old image from fs
-                }
-            } else if (coverImageFromBody !== undefined) {
-                fieldsToUpdate.coverImage = coverImageFromBody; // Keep existing or set to new URL if provided
-            }
+  // TODO: Validate recipeId format
+  if (!recipeId || typeof recipeId !== 'string' || !recipeId.startsWith('RECIPE#')) {
+    return res.status(400).json({ message: 'Valid recipeId (RECIPE#<id>) is required.' });
+  }
 
+  try {
+    // Optional: Check if recipe exists and is accessible by user before adding
+    const updatedCollection = await addRecipeToCollection(collectionId, recipeId, authorId);
+    res.json(updatedCollection);
+  } catch (error) {
+    console.error('Error adding recipe to collection:', error);
+    if (error.message.includes("ConditionalCheckFailedException") || error.message.includes("You might not be the author")) { // Crude check
+        return res.status(403).json({ message: "Failed to add recipe: Collection not found or not owned by user."})
+    }
+    res.status(500).send('Server Error');
+  }
+});
 
-            const updatedCollection = await RecipeCollection.findByIdAndUpdate(
-                collectionId,
-                { $set: fieldsToUpdate },
-                { new: true, runValidators: true }
-            ).populate('user', 'username').populate('recipes', 'name image');
+// @route   DELETE /api/collections/:id/recipes/:recipeId
+// @desc    Remove a recipe from a collection
+// @access  Private
+router.delete('/:id/recipes/:recipeId', authMiddleware, async (req, res) => {
+  const { id: collectionId, recipeId } = req.params;
+  const authorId = `USER#${req.user.id}`;
+  const fullRecipeId = `RECIPE#${recipeId}`; // Assuming recipeId param is just the UUID part
 
-            res.json(updatedCollection);
+  // TODO: Validate recipeId format from param
+  if (!recipeId) {
+    return res.status(400).json({ message: 'Valid recipeId parameter is required.' });
+  }
 
-        } catch (dbErr) {
-            console.error('Error updating collection:', dbErr);
-            if (dbErr.name === 'ValidationError') {
-                return res.status(400).json({ message: Object.values(dbErr.errors).map(val => val.message).join(', ') });
-            }
-            res.status(500).send('Server Error');
-        }
-    });
+  try {
+    const updatedCollection = await removeRecipeFromCollection(collectionId, fullRecipeId, authorId);
+    res.json(updatedCollection);
+  } catch (error) {
+    console.error('Error removing recipe from collection:', error);
+     if (error.message.includes("ConditionalCheckFailedException") || error.message.includes("You might not be the author")) {
+        return res.status(403).json({ message: "Failed to remove recipe: Collection not found or not owned by user."})
+    }
+    res.status(500).send('Server Error');
+  }
 });
 
 // @route   DELETE /api/collections/:id
 // @desc    Delete a collection
 // @access  Private
 router.delete('/:id', authMiddleware, async (req, res) => {
-    try {
-        const collection = await RecipeCollection.findById(req.params.id);
-        if (!collection) {
-            return res.status(404).json({ message: 'Collection not found.' });
-        }
-        if (collection.user.toString() !== req.user.id) {
-            return res.status(403).json({ message: 'User not authorized to delete this collection.' });
-        }
-
-        // TODO: Delete cover image if stored locally
-        // const coverImagePath = collection.coverImage;
-        // if (coverImagePath && coverImagePath.startsWith('/uploads/recipe_images/')) { ... fs.unlink ... }
-
-        await RecipeCollection.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Collection deleted successfully.' });
-    } catch (err) {
-        console.error('Error deleting collection:', err);
-        if (err.kind === 'ObjectId') {
-            return res.status(404).json({ message: 'Collection not found (invalid ID).' });
-        }
-        res.status(500).send('Server Error');
+  const collectionId = req.params.id;
+  const authorId = `USER#${req.user.id}`;
+  try {
+    const collection = await getRecipeCollectionById(collectionId); // Fetch to get cover image path
+    if (!collection) {
+        return res.status(404).json({ message: 'Collection not found.' });
     }
+    if (collection.authorId !== authorId) {
+        return res.status(403).json({ message: 'User not authorized to delete this collection.' });
+    }
+
+    await deleteRecipeCollection(collectionId, authorId);
+
+    if (collection.coverImage && collection.coverImage.startsWith('/uploads/recipe_images/')) {
+      fs.unlink(path.join(__dirname, '..', collection.coverImage), (unlinkErr) => {
+        if (unlinkErr) console.error(`Failed to delete cover image ${collection.coverImage}:`, unlinkErr.message);
+      });
+    }
+    res.json({ message: 'Collection deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting collection:', err);
+    res.status(500).send('Server Error');
+  }
 });
 
 module.exports = router;
