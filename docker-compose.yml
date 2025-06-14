@@ -47,9 +47,9 @@ services:
     image: amazon/dynamodb-local:latest
     ports:
       - "8000:8000" # Expose DynamoDB Local on host port 8000
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/" # Persist data within the container volume
-    volumes:
-      - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory" # Run in-memory
+    # volumes:
+      # - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
     networks:
       - app-network
 
