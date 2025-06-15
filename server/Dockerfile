@@ -14,8 +14,15 @@ COPY package-lock.json ./
 # If you use yarn, use: RUN yarn install --production --frozen-lockfile
 RUN npm ci --only=production
 
+# Install bash for wait-for-it.sh
+RUN apk add --no-cache bash
+
 # Copy the rest of the application code into the container
 COPY . .
+
+# Copy wait-for-it.sh script and make it executable
+COPY wait-for-it.sh /usr/local/bin/wait-for-it.sh
+RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 # Make port 3001 available to the world outside this container
 # This should match the port your Express app listens on (process.env.PORT || 3001)

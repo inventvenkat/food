@@ -200,8 +200,11 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (!recipe) {
       return res.status(404).json({ message: 'Recipe not found' });
     }
+    const expectedAuthorId = `USER#${req.user.id}`;
+    console.log(`[AUTH_DEBUG] Recipe ID: ${req.params.id}, Recipe Author ID: ${recipe.authorId}, Expected Author ID: ${expectedAuthorId}, Is Public: ${recipe.isPublic}`);
     // Check if the recipe is public OR if the user is the author
-    if (!recipe.isPublic && recipe.authorId !== `USER#${req.user.id}`) {
+    if (!recipe.isPublic && recipe.authorId !== expectedAuthorId) {
+      console.log(`[AUTH_DEBUG] Authorization failed for recipe ${req.params.id}.`);
       return res.status(401).json({ message: 'User not authorized to view this recipe' });
     }
     res.json(recipe);

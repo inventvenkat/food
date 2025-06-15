@@ -43,9 +43,9 @@ router.post('/', authMiddleware, (req, res) => {
     if (recipesJSON) {
       try {
         recipeIds = JSON.parse(recipesJSON);
-        if (!Array.isArray(recipeIds) || !recipeIds.every(id => typeof id === 'string' && id.startsWith('RECIPE#'))) {
-          // Basic check for string and prefix, more robust validation might be needed
-          return res.status(400).json({ message: 'Invalid recipe IDs format. Expected array of RECIPE#<id> strings.' });
+        // Validate that it's an array of strings. Prefixing will be handled before DB interaction.
+        if (!Array.isArray(recipeIds) || !recipeIds.every(id => typeof id === 'string')) {
+          return res.status(400).json({ message: 'Invalid recipe IDs format. Expected array of recipe ID strings.' });
         }
       } catch (e) {
         return res.status(400).json({ message: 'Error parsing recipe IDs.' });
@@ -61,11 +61,14 @@ router.post('/', authMiddleware, (req, res) => {
       const collectionData = {
         name,
         description: description || '',
-        recipes: recipeIds, // Will be stored as a list of strings
+        // Ensure IDs are prefixed before passing to the model function
+        recipes: recipeIds.map(id => id.startsWith('RECIPE#') ? id : `RECIPE#${id}`),
         isPublic: isPublic === 'true' || isPublic === true,
         coverImage: coverImageUrl,
       };
-      const newCollection = await createRecipeCollection({ collectionData, authorId, authorUsername });
+      // Spread collectionData and pass authorId, authorUsername.
+      // The model's 'recipes: inputRecipes' alias will pick up 'collectionData.recipes'.
+      const newCollection = await createRecipeCollection({ ...collectionData, authorId, authorUsername });
       res.status(201).json(newCollection);
     } catch (dbErr) {
       console.error('Error creating collection:', dbErr);
@@ -81,6 +84,7 @@ router.get('/', authMiddleware, async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const lastEvaluatedKey = req.query.lek ? JSON.parse(decodeURIComponent(req.query.lek)) : null;
   const authorId = req.user.id; // Just the UUID part from token
+  console.log(`[DEBUG] GET /api/collections - req.user.id: ${req.user.id}, authorId for query: ${authorId}`);
 
   try {
     const { collections, lastEvaluatedKey: newLek } = await getRecipeCollectionsByAuthor(authorId, limit, lastEvaluatedKey);

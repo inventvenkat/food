@@ -7,6 +7,7 @@ const {
   GetCommand
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require('uuid');
+const { getRecipeById } = require('./Recipe'); // Import getRecipeById
 
 const MEAL_PLANS_TABLE_NAME = process.env.MEAL_PLANS_TABLE_NAME || 'RecipeAppMealPlans';
 
@@ -72,10 +73,24 @@ async function getMealPlanEntriesForUserAndDate(userId, date) {
 
   try {
     const { Items } = await docClient.send(new QueryCommand(params));
-    return Items.map(item => {
+    // Populate recipe details for each entry
+    const populatedEntries = await Promise.all(Items.map(async (item) => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
+      if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
+        const plainRecipeId = entry.recipeId.substring(7);
+        try {
+          const recipeDetails = await getRecipeById(plainRecipeId);
+          entry.recipe = recipeDetails || null; // Attach recipe details or null if not found
+        } catch (recipeError) {
+          console.error(`Failed to fetch recipe ${plainRecipeId} for meal plan ${entry.mealPlanId}:`, recipeError);
+          entry.recipe = null; // Or some placeholder indicating an error
+        }
+      } else {
+        entry.recipe = null; // Invalid or missing recipeId
+      }
       return entry;
-    });
+    }));
+    return populatedEntries;
   } catch (error) {
     console.error("Error fetching meal plan entries for date:", error);
     throw new Error('Could not retrieve meal plan entries.');
@@ -100,11 +115,24 @@ async function getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate,
 
   try {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
-    const entries = Items.map(item => {
+    // Populate recipe details for each entry
+    const populatedEntries = await Promise.all(Items.map(async (item) => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
+      if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
+        const plainRecipeId = entry.recipeId.substring(7);
+        try {
+          const recipeDetails = await getRecipeById(plainRecipeId);
+          entry.recipe = recipeDetails || null; // Attach recipe details or null if not found
+        } catch (recipeError) {
+          console.error(`Failed to fetch recipe ${plainRecipeId} for meal plan ${entry.mealPlanId}:`, recipeError);
+          entry.recipe = null;
+        }
+      } else {
+        entry.recipe = null;
+      }
       return entry;
-    });
-    return { entries, lastEvaluatedKey: LastEvaluatedKey };
+    }));
+    return { entries: populatedEntries, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
     console.error("Error fetching meal plan entries for date range:", error);
     throw new Error('Could not retrieve meal plan entries for date range.');

@@ -28,7 +28,7 @@ const CreateCollectionPage = () => {
       });
       if (!response.ok) throw new Error('Failed to fetch your recipes for selection.');
       const data = await response.json();
-      setUserRecipes(data);
+      setUserRecipes(data.recipes || []); // Ensure we set the array
     } catch (err) {
       setError(err.message);
     }
@@ -85,7 +85,7 @@ const CreateCollectionPage = () => {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Failed to create collection.');
-      
+
       setSuccess('Collection created successfully! Redirecting...');
       setTimeout(() => navigate('/my-collections'), 2000); // Or to the new collection's page
     } catch (err) {
@@ -111,17 +111,17 @@ const CreateCollectionPage = () => {
         </div>
         <div>
           <label htmlFor="recipes" className="block text-sm font-medium text-gray-700">Select Recipes (Ctrl/Cmd + Click for multiple)</label>
-          <select 
-            multiple 
-            name="recipes" 
-            id="recipes" 
-            value={formData.recipes} 
-            onChange={handleRecipeSelectionChange} 
+          <select
+            multiple
+            name="recipes"
+            id="recipes"
+            value={formData.recipes}
+            onChange={handleRecipeSelectionChange}
             className="select-style w-full h-40"
           >
             {userRecipes.length === 0 && <option disabled>Loading your recipes...</option>}
             {userRecipes.map(recipe => (
-              <option key={recipe._id} value={recipe._id}>{recipe.name}</option>
+              <option key={recipe.recipeId} value={recipe.recipeId}>{recipe.name}</option>
             ))}
           </select>
         </div>

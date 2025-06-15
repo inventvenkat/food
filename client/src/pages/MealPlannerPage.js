@@ -9,7 +9,7 @@ const localizer = momentLocalizer(moment);
 
 const MealPlannerPage = () => {
   const [myEvents, setMyEvents] = useState([]);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -52,18 +52,18 @@ const MealPlannerPage = () => {
       const events = data.map(plan => {
         if (!plan.recipe) { // If recipe was deleted and populate returned null
           return {
-            id: plan._id,
+            id: plan.mealPlanId, // Use mealPlanId
             title: `${plan.mealType}: (Deleted Recipe)`, // Display a placeholder
             start: new Date(plan.date),
             end: new Date(plan.date),
             allDay: true,
             // Provide a minimal resource object so event handlers don't break
-            resource: { ...plan, recipe: { name: "(Deleted Recipe)", _id: null } } 
+            resource: { ...plan, recipe: { name: "(Deleted Recipe)", _id: null } }
           };
         }
         // Existing logic for when recipe exists
         return {
-          id: plan._id,
+          id: plan.mealPlanId, // Use mealPlanId
           title: `${plan.mealType}: ${plan.recipe.name} (${plan.plannedServings} serv.)`,
           start: new Date(plan.date),
           end: new Date(plan.date),
@@ -87,7 +87,7 @@ const MealPlannerPage = () => {
       });
       if (!response.ok) throw new Error('Failed to fetch user recipes.');
       const data = await response.json();
-      setUserRecipes(data);
+      setUserRecipes(data.recipes || []); // Ensure userRecipes is an array
     } catch (err) {
       console.error("Fetch User Recipes error:", err);
     }
@@ -107,12 +107,12 @@ const MealPlannerPage = () => {
       setModalPlannedServings(1);
       setShowAddModal(true);
     },
-    [] 
+    []
   );
-  
+
   const handleRecipeSelectionChange = (recipeId) => {
     setSelectedRecipeId(recipeId);
-    const selectedRecipe = userRecipes.find(r => r._id === recipeId);
+    const selectedRecipe = userRecipes.find(r => r.recipeId === recipeId); // Changed from r._id
     if (selectedRecipe && selectedRecipe.servings) {
       setModalPlannedServings(selectedRecipe.servings);
     } else {
@@ -126,6 +126,11 @@ const MealPlannerPage = () => {
       return;
     }
     const token = localStorage.getItem('token');
+    // Format to YYYY-MM-DD to represent the local date selected, avoiding timezone shifts for all-day events
+    const dateToSend = moment(selectedSlotInfo.date).format('YYYY-MM-DD');
+    console.log('[MealPlanner DEBUG] Adding entry for date (raw):', selectedSlotInfo.date);
+    console.log('[MealPlanner DEBUG] Adding entry for date (YYYY-MM-DD):', dateToSend);
+
     try {
       const response = await fetch('/api/mealplans', {
         method: 'POST',
@@ -134,7 +139,7 @@ const MealPlannerPage = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          date: moment(selectedSlotInfo.date).toISOString(),
+          date: dateToSend,
           mealType: selectedMealType,
           recipeId: selectedRecipeId,
           plannedServings: modalPlannedServings,
@@ -145,7 +150,7 @@ const MealPlannerPage = () => {
         throw new Error(errData.message || 'Failed to add meal plan entry.');
       }
       setShowAddModal(false);
-      fetchMealPlans(); 
+      fetchMealPlans();
       alert('Meal plan entry added successfully!');
     } catch (err) {
       console.error("Add Meal Plan Entry error:", err);
@@ -154,9 +159,15 @@ const MealPlannerPage = () => {
   };
 
   const confirmDeleteMealPlanEntry = useCallback(async () => {
-    if (!mealPlanEntryToDelete || !mealPlanEntryToDelete.id) return;
+    if (!mealPlanEntryToDelete || !mealPlanEntryToDelete.id) {
+      console.error('[MealPlanner DEBUG] Delete aborted: mealPlanEntryToDelete or its ID is null/undefined.', mealPlanEntryToDelete);
+      return;
+    }
     const token = localStorage.getItem('token');
     if (!token) { setError('Authentication required.'); navigate('/login'); return; }
+
+    console.log('[MealPlanner DEBUG] Attempting to delete meal plan entry with ID:', mealPlanEntryToDelete.id);
+
     try {
       const response = await fetch(`/api/mealplans/${mealPlanEntryToDelete.id}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
@@ -167,7 +178,7 @@ const MealPlannerPage = () => {
         try { const errData = JSON.parse(responseText); errorMessage = errData.message || errorMessage; } catch (e) { if(responseText) errorMessage = responseText; }
         throw new Error(errorMessage);
       }
-      fetchMealPlans(); 
+      fetchMealPlans();
       alert('Meal plan entry removed successfully!');
     } catch (err) {
       console.error("Delete Meal Plan Entry error:", err.message);
@@ -176,17 +187,17 @@ const MealPlannerPage = () => {
       setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null);
     }
   }, [fetchMealPlans, navigate, mealPlanEntryToDelete]);
-  
+
   const handleSelectEvent = useCallback(
     (event) => {
-      if (event.id && event.title) { 
+      if (event.id && event.title) {
         setMealPlanEntryToDelete({ id: event.id, title: event.title });
         setShowDeleteConfirmModal(true);
       } else {
         alert(`Clicked: ${event.title}. No ID found for deletion options.`);
       }
     },
-    [] 
+    []
   );
 
   const handleGenerateShoppingListFromPlan = () => {
@@ -214,10 +225,10 @@ const MealPlannerPage = () => {
       const response = await fetch('/api/mealplans/copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ 
-          sourceStartDate: copySourceStart, 
-          sourceEndDate: copySourceEnd, 
-          destinationStartDate: copyDestStart 
+        body: JSON.stringify({
+          sourceStartDate: copySourceStart,
+          sourceEndDate: copySourceEnd,
+          destinationStartDate: copyDestStart
         }),
       });
       const result = await response.json();
@@ -240,8 +251,8 @@ const MealPlannerPage = () => {
       <h1 className="text-3xl font-bold text-center mb-6">Meal Planner</h1>
 
       <div className="mb-4">
-        <button 
-          onClick={toggleControls} 
+        <button
+          onClick={toggleControls}
           className="w-full btn-secondary py-2 px-4 rounded-md flex items-center justify-center text-sm font-medium"
         >
           {isControlsOpen ? 'Hide Planner Tools' : 'Show Planner Tools'}
@@ -278,7 +289,7 @@ const MealPlannerPage = () => {
       <div style={{ height: '70vh' }} className="bg-white p-4 shadow-lg rounded-lg">
         <Calendar
           localizer={localizer} events={myEvents} startAccessor="start" endAccessor="end"
-          style={{ height: '100%' }} selectable onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent} 
+          style={{ height: '100%' }} selectable onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
           date={currentDate} view={currentView} onNavigate={(date) => setCurrentDate(date)} onView={(view) => setCurrentView(view)}
           views={['month', 'week', 'day']}
         />
@@ -287,7 +298,7 @@ const MealPlannerPage = () => {
         <div className="space-y-4">
           <div><label htmlFor="mealDate" className="block text-sm font-medium text-gray-700">Date</label><input type="text" id="mealDate" readOnly value={selectedSlotInfo ? moment(selectedSlotInfo.date).format('LL') : ''} className="mt-1 block w-full input-style"/></div>
           <div><label htmlFor="mealTypeSelect" className="block text-sm font-medium text-gray-700">Meal Type</label><select id="mealTypeSelect" value={selectedMealType} onChange={(e) => setSelectedMealType(e.target.value)} className="mt-1 block w-full select-style"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
-          <div><label htmlFor="recipeSelect" className="block text-sm font-medium text-gray-700">Recipe</label><select id="recipeSelect" value={selectedRecipeId} onChange={(e) => handleRecipeSelectionChange(e.target.value)} className="mt-1 block w-full select-style"><option value="">-- Select a Recipe --</option>{userRecipes.map(recipe => (<option key={recipe._id} value={recipe._id}>{recipe.name} (Serves {recipe.servings || 'N/A'})</option>))}</select></div>
+          <div><label htmlFor="recipeSelect" className="block text-sm font-medium text-gray-700">Recipe</label><select id="recipeSelect" value={selectedRecipeId} onChange={(e) => handleRecipeSelectionChange(e.target.value)} className="mt-1 block w-full select-style"><option value="">-- Select a Recipe --</option>{userRecipes.map(recipe => (<option key={recipe.recipeId} value={recipe.recipeId}>{recipe.name} (Serves {recipe.servings || 'N/A'})</option>))}</select></div>
           <div><label htmlFor="plannedServings" className="block text-sm font-medium text-gray-700">Servings for this meal</label><input type="number" id="plannedServings" name="plannedServings" value={modalPlannedServings} onChange={(e) => setModalPlannedServings(parseInt(e.target.value, 10) || 1)} min="1" required className="mt-1 block w-full input-style"/></div>
           <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button><button type="button" onClick={handleAddMealPlanEntry} className="btn-primary">Add to Plan</button></div>
         </div>
@@ -303,10 +314,10 @@ const MealPlannerPage = () => {
           </div>
         </Modal>
       )}
-      {/* 
-        Removed style jsx global block. 
-        CSS classes like .input-style, .select-style, .btn-primary, .btn-secondary 
-        should be defined globally (e.g., in index.css using @layer components) 
+      {/*
+        Removed style jsx global block.
+        CSS classes like .input-style, .select-style, .btn-primary, .btn-secondary
+        should be defined globally (e.g., in index.css using @layer components)
         or applied directly using Tailwind utility classes on each element.
         The buttons in this file already use direct Tailwind classes or btn-primary/btn-secondary which should be defined globally.
       */}

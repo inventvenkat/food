@@ -1,5 +1,8 @@
 const { DynamoDBClient, CreateTableCommand, ListTablesCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { USERS_TABLE_NAME } = require('../models/User'); // Get the table name from User model
+const { RECIPES_TABLE_NAME } = require('../models/Recipe'); // Get the table name from Recipe model
+const { RECIPE_COLLECTIONS_TABLE_NAME } = require('../models/RecipeCollection'); // Get the table name from RecipeCollection model
+const { MEAL_PLANS_TABLE_NAME } = require('../models/MealPlan'); // Get the table name from MealPlan model
 
 const REGION = process.env.AWS_REGION || "localhost";
 const DYNAMODB_ENDPOINT_OVERRIDE = process.env.DYNAMODB_ENDPOINT_OVERRIDE;
@@ -68,6 +71,137 @@ const usersTableParams = {
   }
 };
 
+const recipesTableParams = {
+  TableName: RECIPES_TABLE_NAME,
+  KeySchema: [
+    { AttributeName: "PK", KeyType: "HASH" }, // Partition key
+    { AttributeName: "SK", KeyType: "RANGE" }  // Sort key
+  ],
+  AttributeDefinitions: [
+    { AttributeName: "PK", AttributeType: "S" },
+    { AttributeName: "SK", AttributeType: "S" },
+    { AttributeName: "GSI1PK", AttributeType: "S" },
+    { AttributeName: "GSI1SK", AttributeType: "S" },
+    { AttributeName: "GSI2PK", AttributeType: "S" },
+    { AttributeName: "GSI2SK", AttributeType: "S" },
+    { AttributeName: "GSI3PK", AttributeType: "S" },
+    { AttributeName: "GSI3SK", AttributeType: "S" }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: "GSI1PK-GSI1SK-index",
+      KeySchema: [
+        { AttributeName: "GSI1PK", KeyType: "HASH" },
+        { AttributeName: "GSI1SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    },
+    {
+      IndexName: "GSI2PK-GSI2SK-index",
+      KeySchema: [
+        { AttributeName: "GSI2PK", KeyType: "HASH" },
+        { AttributeName: "GSI2SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    },
+    {
+      IndexName: "GSI3PK-GSI3SK-index", // Assuming this name based on usage in Recipe.js
+      KeySchema: [
+        { AttributeName: "GSI3PK", KeyType: "HASH" },
+        { AttributeName: "GSI3SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    }
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 1,
+    WriteCapacityUnits: 1
+  }
+};
+
+const recipeCollectionsTableParams = {
+  TableName: RECIPE_COLLECTIONS_TABLE_NAME,
+  KeySchema: [
+    { AttributeName: "PK", KeyType: "HASH" },
+    { AttributeName: "SK", KeyType: "RANGE" }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: "PK", AttributeType: "S" },
+    { AttributeName: "SK", AttributeType: "S" },
+    { AttributeName: "GSI1PK", AttributeType: "S" },
+    { AttributeName: "GSI1SK", AttributeType: "S" },
+    { AttributeName: "GSI2PK", AttributeType: "S" },
+    { AttributeName: "GSI2SK", AttributeType: "S" }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: "GSI1PK-GSI1SK-index",
+      KeySchema: [
+        { AttributeName: "GSI1PK", KeyType: "HASH" },
+        { AttributeName: "GSI1SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    },
+    {
+      IndexName: "GSI2PK-GSI2SK-index",
+      KeySchema: [
+        { AttributeName: "GSI2PK", KeyType: "HASH" },
+        { AttributeName: "GSI2SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    }
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 1,
+    WriteCapacityUnits: 1
+  }
+};
+
+const mealPlansTableParams = {
+  TableName: MEAL_PLANS_TABLE_NAME,
+  KeySchema: [
+    { AttributeName: "PK", KeyType: "HASH" },
+    { AttributeName: "SK", KeyType: "RANGE" }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: "PK", AttributeType: "S" },
+    { AttributeName: "SK", AttributeType: "S" },
+    { AttributeName: "GSI1PK", AttributeType: "S" },
+    { AttributeName: "GSI1SK", AttributeType: "S" },
+    { AttributeName: "GSI2PK", AttributeType: "S" },
+    { AttributeName: "GSI2SK", AttributeType: "S" }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: "GSI1PK-GSI1SK-index",
+      KeySchema: [
+        { AttributeName: "GSI1PK", KeyType: "HASH" },
+        { AttributeName: "GSI1SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    },
+    {
+      IndexName: "GSI2PK-GSI2SK-index",
+      KeySchema: [
+        { AttributeName: "GSI2PK", KeyType: "HASH" },
+        { AttributeName: "GSI2SK", KeyType: "RANGE" }
+      ],
+      Projection: { ProjectionType: "ALL" },
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+    }
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 1,
+    WriteCapacityUnits: 1
+  }
+};
+
 async function tableExists(tableName) {
   try {
     await dynamodbClient.send(new DescribeTableCommand({ TableName: tableName }));
@@ -120,8 +254,9 @@ async function initializeDatabase() {
   }
   console.log("Initializing DynamoDB tables for local development...");
   await createTableIfNotExists(usersTableParams);
-  // Add calls to create other tables here if needed
-  // e.g., await createTableIfNotExists(recipesTableParams);
+  await createTableIfNotExists(recipesTableParams);
+  await createTableIfNotExists(recipeCollectionsTableParams);
+  await createTableIfNotExists(mealPlansTableParams);
   console.log("DynamoDB local initialization complete.");
 }
 

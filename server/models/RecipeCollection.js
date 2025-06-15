@@ -24,7 +24,8 @@ const createCollectionGsiPkSk = (collection) => {
   return gsiAttrs;
 };
 
-async function createRecipeCollection({ name, description, authorId, authorUsername, isPublic = false, coverImage = '' }) {
+// Updated signature to include 'recipes'
+async function createRecipeCollection({ name, description, recipes: inputRecipes, authorId, authorUsername, isPublic = false, coverImage = '' }) {
   const collectionId = uuidv4();
   const timestamp = new Date().toISOString();
 
@@ -36,7 +37,7 @@ async function createRecipeCollection({ name, description, authorId, authorUsern
     description: description || '',
     authorId, // e.g., USER#<uuid>
     authorUsername, // Denormalized
-    recipes: [], // Initialize with an empty list of recipe IDs
+    recipes: inputRecipes || [], // Use the passed recipes array
     isPublic,
     coverImage,
     createdAt: timestamp,
@@ -84,6 +85,7 @@ async function getRecipeCollectionById(collectionId) {
 }
 
 async function getRecipeCollectionsByAuthor(authorId, limit = 10, lastEvaluatedKey = null) {
+  console.log(`[DEBUG] getRecipeCollectionsByAuthor - received authorId: ${authorId}`);
   const params = {
     TableName: RECIPE_COLLECTIONS_TABLE_NAME,
     IndexName: 'GSI1PK-GSI1SK-index', // Assumes GSI for user's collections
@@ -95,9 +97,11 @@ async function getRecipeCollectionsByAuthor(authorId, limit = 10, lastEvaluatedK
     Limit: limit,
   };
   if (lastEvaluatedKey) params.ExclusiveStartKey = lastEvaluatedKey;
+  console.log(`[DEBUG] getRecipeCollectionsByAuthor - DynamoDB Query params: ${JSON.stringify(params, null, 2)}`);
 
   try {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
+    console.log(`[DEBUG] getRecipeCollectionsByAuthor - Raw Items from DynamoDB: ${JSON.stringify(Items, null, 2)}`);
     const collections = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = item;
       return collection;

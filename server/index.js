@@ -1,11 +1,15 @@
+console.log(`[INIT_DEBUG] process.env.APP_PORT before dotenv: ${process.env.APP_PORT}`);
+console.log(`[INIT_DEBUG] process.env.PORT (original) before dotenv: ${process.env.PORT}`);
 require('dotenv').config(); // Load environment variables
+console.log(`[INIT_DEBUG] process.env.APP_PORT after dotenv: ${process.env.APP_PORT}`);
+console.log(`[INIT_DEBUG] process.env.PORT (original) after dotenv: ${process.env.PORT}`);
 const express = require('express');
 // const mongoose = require('mongoose'); // Mongoose removed for DynamoDB migration
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.APP_PORT || 3001;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -84,8 +88,11 @@ app.get('/api', (req, res) => {
 
 // Initialize DynamoDB tables before starting the server
 initializeDatabase().then(() => {
+  console.log(`[DEBUG] process.env.APP_PORT before fallback: ${process.env.APP_PORT}`);
+  console.log(`[DEBUG] process.env.PORT (original) before fallback: ${process.env.PORT}`);
+  console.log(`[DEBUG] Resolved port variable (from APP_PORT): ${port}`);
   app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port} (Internal port: ${port}, using APP_PORT: ${process.env.APP_PORT}, original PORT: ${process.env.PORT})`);
   });
 }).catch(err => {
   console.error("Failed to initialize database or start server:", err);

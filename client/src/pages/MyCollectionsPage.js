@@ -25,7 +25,7 @@ const MyCollectionsPage = () => {
         throw new Error(errData.message || 'Failed to fetch collections');
       }
       const data = await response.json();
-      setCollections(data);
+      setCollections(data.collections || []); // Ensure 'collections' is an array
     } catch (err) {
       setError(err.message);
     } finally {

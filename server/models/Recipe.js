@@ -20,7 +20,8 @@ const RECIPES_TABLE_NAME = process.env.RECIPES_TABLE_NAME || 'RecipeAppRecipes';
 const createGsiPkSk = (recipe) => {
   const gsiAttrs = {};
   if (recipe.authorId) {
-    gsiAttrs.GSI1PK = `USER#${recipe.authorId}`;
+    // recipe.authorId is already in USER#<id> format when passed from createRecipe
+    gsiAttrs.GSI1PK = recipe.authorId;
     gsiAttrs.GSI1SK = `RECIPE#${recipe.createdAt}`; // Sort user's recipes by creation time
   }
   if (recipe.isPublic !== undefined) {
