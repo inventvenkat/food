@@ -5,8 +5,8 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package.json and package-lock.json (or yarn.lock)
-COPY package.json ./
-COPY package-lock.json ./
+COPY ./package.json ./
+COPY ./package-lock.json ./
 # If you use yarn, uncomment the next line and comment out the npm ci line
 # COPY yarn.lock ./
 
@@ -34,7 +34,7 @@ RUN chmod +x /usr/local/bin/wait-for-it.sh
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Copy custom Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
