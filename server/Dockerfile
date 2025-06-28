@@ -5,8 +5,8 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json (or yarn.lock)
-COPY package.json ./
-COPY package-lock.json ./
+COPY ./package.json ./
+COPY ./package-lock.json ./
 # If you use yarn, uncomment the next line and comment out the npm ci line
 # COPY yarn.lock ./
 
@@ -21,7 +21,7 @@ RUN apk add --no-cache bash
 COPY . .
 
 # Copy wait-for-it.sh script and make it executable
-COPY wait-for-it.sh /usr/local/bin/wait-for-it.sh
+COPY ./wait-for-it.sh /usr/local/bin/wait-for-it.sh
 RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 # Make port 3001 available to the world outside this container
