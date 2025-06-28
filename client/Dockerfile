@@ -27,7 +27,7 @@ FROM nginx:1.25-alpine
 RUN apk add --no-cache bash
 
 # Copy wait-for-it.sh script and make it executable
-COPY wait-for-it.sh /usr/local/bin/wait-for-it.sh
+COPY ./wait-for-it.sh /usr/local/bin/wait-for-it.sh
 RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 # Copy built assets from the builder stage

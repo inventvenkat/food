@@ -21,10 +21,14 @@ jobs:
 
       - name: Build and tag Docker images
         run: |
-          docker build -t client:${GITHUB_RUN_NUMBER} -f client/Dockerfile .
+	  pushd client
+          docker build -t client:${GITHUB_RUN_NUMBER} -f Dockerfile .
           docker tag client:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
-          docker build -t server:${GITHUB_RUN_NUMBER} -f server/Dockerfile .
+ 	  popd
+	  pushd server
+          docker build -t server:${GITHUB_RUN_NUMBER} -f Dockerfile .
           docker tag server:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
+	  popd
 
       - name: Push Docker images
         run: |
