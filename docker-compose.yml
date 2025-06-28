@@ -10,6 +10,11 @@ services:
     command: ["/bin/bash", "-c", "/usr/local/bin/wait-for-it.sh server:3001 -t 60 -- nginx -g 'daemon off;'"]
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   server:
     build:
@@ -35,6 +40,11 @@ services:
     command: ["/usr/local/bin/wait-for-it.sh", "dynamodb-local:8000", "--", "node", "index.js"]
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # mongo: # MongoDB service for current setup - Commented out for DynamoDB setup
   #   image: mongo:latest

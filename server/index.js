@@ -11,6 +11,9 @@ const fs = require('fs');
 const app = express();
 const port = process.env.APP_PORT || 3001;
 
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { PingCommand } = require('@aws-sdk/client-dynamodb');
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 
@@ -84,6 +87,22 @@ app.use('/api/collections', recipeCollectionRoutes); // Mount collection routes
 // A simple API endpoint
 app.get('/api', (req, res) => {
   res.json({ message: 'Hello from the Recipe App API!' });
+});
+
+// Health check endpoint
+app.get('/healthz', async (req, res) => {
+  try {
+    // Check DynamoDB connection
+    const client = new DynamoDBClient({});
+    await client.send(new PingCommand({}));
+
+    // Add any other health checks here, e.g. check if required env vars are set
+
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // Initialize DynamoDB tables before starting the server
