@@ -10,7 +10,6 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 const port = process.env.APP_PORT || 3001;
-
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { PingCommand } = require('@aws-sdk/client-dynamodb');
 
