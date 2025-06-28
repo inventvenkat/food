@@ -88,9 +88,8 @@ const RecipeDetailPage = () => {
   }, [recipeId, navigate]);
 
   const handleTogglePublicStatus = async () => {
-    const isOwner = recipe && recipe.user && currentUserId &&
-                    ( (typeof recipe.user === 'string' && recipe.user === currentUserId) ||
-                      (recipe.user._id && recipe.user._id === currentUserId) );
+    // Corrected ownership check, consistent with the one used for displaying buttons
+    const isOwner = recipe && recipe.authorId && currentUserId && recipe.authorId === `USER#${currentUserId}`;
 
     if (!recipe || !isOwner) {
       alert("You can only change the status of your own recipes.");
@@ -162,6 +161,11 @@ const RecipeDetailPage = () => {
   if (loading) return <div className="text-center p-10">Loading recipe details...</div>;
   if (error) return <div className="text-center p-10 text-red-600">Error: {error}</div>;
   if (!recipe) return <div className="text-center p-10">Recipe not found.</div>;
+
+  // Determine if the current user is the owner of the recipe
+  const isOwner = recipe && recipe.authorId && currentUserId && recipe.authorId === `USER#${currentUserId}`;
+  // Debugging log for ownership
+  // console.log(`[OWNERSHIP_DEBUG] Recipe Author ID: ${recipe ? recipe.authorId : 'N/A'}, Current User ID for check: USER#${currentUserId}, Is Owner: ${isOwner}`);
 
   const getRecipeTextForSpeech = () => {
     if (!recipe) return "";
@@ -326,10 +330,10 @@ const RecipeDetailPage = () => {
           )}
 
           <div className="mt-8 pt-6 border-t border-gray-200 flex flex-wrap gap-4">
-            {recipe.user && currentUserId === (typeof recipe.user === 'string' ? recipe.user : recipe.user._id) && (
+            {isOwner && (
               <>
                 <Link
-                  to={`/edit-recipe/${recipe._id}`}
+                  to={`/edit-recipe/${recipe.recipeId}`}
                   className="btn-primary" // Using Tailwind apply classes from EditRecipePage for consistency
                 >
                   Edit Recipe

@@ -78,16 +78,16 @@ router.get('/', authMiddleware, async (req, res) => {
       // Default: fetch recent/upcoming (e.g., next 7 days), or require a range.
       // For now, let's require at least a startDate or specificDate for simplicity, or implement a default range.
       // Or, fetch all (not recommended without client-side limits or server-side default range)
-      // For this example, let's return an empty array if no specific range/date.
-      // A better approach would be to define a default range (e.g., today + 7 days).
-      return res.status(400).json({ message: "Please provide a specific date or a startDate and endDate." });
+      // Default to fetching for the current month if no specific range/date is provided.
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      result = await getMealPlanEntriesForUserAndDateRange(userId, firstDayOfMonth, lastDayOfMonth, 100, null); // Fetch up to 100 for the month
     }
 
-    // Entries contain recipeId. Client needs to fetch recipe details if needed.
-    res.json({
-      mealPlans: result.entries,
-      nextLek: result.lastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.lastEvaluatedKey)) : null,
-    });
+    // The frontend expects a direct array of meal plan entries.
+    // The result.entries already contains the cleaned-up entries.
+    res.json(result.entries || []); // Send the array directly, or an empty array if undefined
   } catch (err) {
     console.error('Error fetching meal plans:', err.message);
     res.status(500).send('Server Error');

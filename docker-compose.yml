@@ -7,6 +7,7 @@ services:
       - "3003:80" # Changed host port to 3003 to avoid conflict
     depends_on:
       - server
+    command: ["/bin/bash", "-c", "/usr/local/bin/wait-for-it.sh server:3001 -t 60 -- nginx -g 'daemon off;'"]
     networks:
       - app-network
 
@@ -20,7 +21,7 @@ services:
       # For current Mongoose setup (pre-DynamoDB refactor):
       # - MONGODB_URI=mongodb://mongo:27017/recipe_app_db # Points to the mongo service below
       - JWT_SECRET=yourSuperSecretKeyForJWTs # Change this in a real .env file for compose
-      - PORT=3001
+      - APP_PORT=3001
       # --- Lines to uncomment/modify AFTER refactoring server for DynamoDB Local ---
       - DYNAMODB_ENDPOINT_OVERRIDE=http://dynamodb-local:8000
       - AWS_ACCESS_KEY_ID=dummy # For DynamoDB Local
@@ -31,6 +32,7 @@ services:
     depends_on:
       # - mongo # Initially depends on Mongo
       - dynamodb-local # Uncomment after refactoring to DynamoDB
+    command: ["/usr/local/bin/wait-for-it.sh", "dynamodb-local:8000", "--", "node", "index.js"]
     networks:
       - app-network
 
@@ -47,9 +49,9 @@ services:
     image: amazon/dynamodb-local:latest
     ports:
       - "8000:8000" # Expose DynamoDB Local on host port 8000
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data/" # Persist data within the container volume
-    volumes:
-      - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory" # Run in-memory
+    # volumes:
+      # - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
     networks:
       - app-network
 

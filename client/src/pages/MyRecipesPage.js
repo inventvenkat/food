@@ -10,9 +10,9 @@ const MyRecipesPage = () => {
   const [selectedRecipes, setSelectedRecipes] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  
+
   // This would ideally come from an AuthContext or similar
-  const [currentUserId, setCurrentUserId] = useState(null); 
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     // Simulate fetching current user ID (e.g., from decoded token)
@@ -45,8 +45,8 @@ const MyRecipesPage = () => {
         throw new Error(errData.message || 'Failed to fetch initial recipes');
       }
       const data = await response.json();
-      setInitialRecipes(data);
-      setSearchResults(data); // Initially, search results are all user's recipes
+      setInitialRecipes(data.recipes || []); // Ensure it's an array
+      setSearchResults(data.recipes || []); // Ensure it's an array
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,8 +70,8 @@ const MyRecipesPage = () => {
       setError(''); // Clear previous errors
       const token = localStorage.getItem('token');
       if (!token) { // Should ideally not happen if user is on this page
-        setError('Authentication required for search.'); 
-        setIsSearching(false); 
+        setError('Authentication required for search.');
+        setIsSearching(false);
         return;
       }
       try {
@@ -83,7 +83,9 @@ const MyRecipesPage = () => {
           throw new Error(errData.message || 'Search failed');
         }
         const data = await response.json();
-        setSearchResults(data);
+        // The /api/recipes/search endpoint currently returns { message: "...", recipes: [] }
+        // So we need to access data.recipes for search results as well.
+        setSearchResults(data.recipes || []);
       } catch (err) {
         setError(err.message);
         setSearchResults([]); // Clear results on error
@@ -113,7 +115,7 @@ const MyRecipesPage = () => {
     const ids = Array.from(selectedRecipes).join(',');
     // This needs to be updated if shopping list generation relies on plannedServings from MealPlan
     // For now, it generates based on default servings of selected recipes.
-    navigate(`/shopping-list?recipeIds=${ids}`); 
+    navigate(`/shopping-list?recipeIds=${ids}`);
   };
 
   if (loading && searchTerm.trim() === '') return <div className="text-center p-4">Loading your recipes...</div>;
@@ -123,7 +125,7 @@ const MyRecipesPage = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold text-center mb-8">My Recipes & Public Discoveries</h1>
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <input 
+        <input
           type="text"
           placeholder="Search all recipes (yours and public)..."
           className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm w-full sm:w-2/3 md:w-1/2"
@@ -145,7 +147,7 @@ const MyRecipesPage = () => {
           <p>
             {searchTerm ? `No recipes found matching "${searchTerm}".` : "You haven't created any recipes yet."}
           </p>
-          {!searchTerm && 
+          {!searchTerm &&
             <Link to="/create-recipe" className="text-indigo-600 hover:text-indigo-800 font-semibold">
               Create your first recipe!
             </Link>
@@ -155,19 +157,22 @@ const MyRecipesPage = () => {
 
       {searchResults.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {searchResults.map(recipe => {
+          {searchResults.map((recipe, index) => { // Added index for logging
+            if (index === 0) { // Log the first recipe object
+              console.log("First recipe object in searchResults:", JSON.stringify(recipe, null, 2));
+            }
             const isOwnedByCurrentUser = recipe.user && recipe.user._id === currentUserId;
             const displayPublicTag = recipe.isPublic && !isOwnedByCurrentUser;
-            
+
             return (
-              <div key={recipe._id} className="bg-white shadow-lg rounded-lg overflow-hidden relative">
-                <label htmlFor={`recipe-${recipe._id}`} className="block cursor-pointer">
+              <div key={recipe.recipeId} className="bg-white shadow-lg rounded-lg overflow-hidden relative">
+                <label htmlFor={`recipe-${recipe.recipeId}`} className="block cursor-pointer">
                   {isOwnedByCurrentUser && ( // Only show checkbox for owned recipes
-                    <input 
-                      type="checkbox" 
-                      id={`recipe-${recipe._id}`}
-                      checked={selectedRecipes.has(recipe._id)}
-                      onChange={() => handleRecipeSelect(recipe._id)}
+                    <input
+                      type="checkbox"
+                      id={`recipe-${recipe.recipeId}`}
+                      checked={selectedRecipes.has(recipe.recipeId)}
+                      onChange={() => handleRecipeSelect(recipe.recipeId)}
                       className="absolute top-2 right-2 m-2 h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 z-10"
                     />
                   )}
@@ -176,10 +181,10 @@ const MyRecipesPage = () => {
                   )}
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-1">
-                      <Link to={`/recipes/${recipe._id}`} className="hover:text-indigo-700 flex-grow mr-2">
+                      <Link to={`/recipes/${recipe.recipeId}`} className="hover:text-indigo-700 flex-grow mr-2">
                         <h3 className="text-xl font-semibold">{recipe.name}</h3>
                       </Link>
-                      {displayPublicTag && 
+                      {displayPublicTag &&
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">Public</span>
                       }
                        {isOwnedByCurrentUser && recipe.isPublic &&
