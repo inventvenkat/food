@@ -23,21 +23,21 @@ jobs:
         run: |
           pushd client
           docker build -t client:${GITHUB_RUN_NUMBER} -f Dockerfile .
-          docker tag client:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
+          docker tag client:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
           popd
           pushd server
           docker build -t server:${GITHUB_RUN_NUMBER} -f Dockerfile .
-          docker tag server:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
+          docker tag server:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
           popd
 
       - name: Push Docker images
         run: |
-          docker push hub.docker.com/inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
-          docker push hub.docker.com/inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
+          docker push inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
+          docker push inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
 
       - name: Tag and push latest
         run: |
-          docker tag hub.docker.com/inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/client:latest
-          docker push hub.docker.com/inventvenkat/goodfood/client:latest
-          docker tag hub.docker.com/inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER} hub.docker.com/inventvenkat/goodfood/server:latest
-          docker push hub.docker.com/inventvenkat/goodfood/server:latest
+          docker tag inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/client:latest
+          docker push inventvenkat/goodfood/client:latest
+          docker tag inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/server:latest
+          docker push inventvenkat/goodfood/server:latest
