@@ -15,7 +15,7 @@ resource "aws_lb" "app" {
 }
 
 resource "aws_lb_target_group" "app" {
-  name        = "${var.project_name}-tg"
+  name_prefix = "gf-tg-"
   port        = 3003 # Port where client nginx is exposed on EC2 instances
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
