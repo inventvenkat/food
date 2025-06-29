@@ -88,19 +88,32 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Hello from the Recipe App API!' });
 });
 
-// Health check endpoint
-app.get('/healthz', async (req, res) => {
+// Simple health check endpoint (for load balancer)
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Deep health check endpoint (includes DynamoDB connection)
+app.get('/health/deep', async (req, res) => {
   try {
-    // Check DynamoDB connection
-    const client = new DynamoDBClient({});
-    await client.send(new PingCommand({}));
+    // Check DynamoDB connection using the configured client
+    const { dynamodbClient } = require('./config/db');
+    await dynamodbClient.send(new PingCommand({}));
 
     // Add any other health checks here, e.g. check if required env vars are set
 
-    res.status(200).send('OK');
+    res.status(200).json({ 
+      status: 'OK', 
+      dynamodb: 'connected',
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).send('Internal Server Error');
+    console.error('Deep health check failed:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

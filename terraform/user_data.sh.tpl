@@ -58,15 +58,15 @@ services:
     ports:
       - "3002:3001"
     environment:
-      - JWT_SECRET=\${jwt_secret}
-      - APP_PORT=\${app_server_port}
-      - AWS_REGION=\${aws_region}
-      - AWS_DEFAULT_REGION=\${aws_region}
+      - JWT_SECRET=${jwt_secret}
+      - APP_PORT=${app_server_port}
+      - AWS_REGION=${aws_region}
+      - AWS_DEFAULT_REGION=${aws_region}
       - AWS_STS_REGIONAL_ENDPOINTS=regional
-      - USERS_TABLE_NAME=\${users_table_name}
-      - RECIPES_TABLE_NAME=\${recipes_table_name}
-      - RECIPE_COLLECTIONS_TABLE_NAME=\${recipe_collections_table_name}
-      - MEAL_PLANS_TABLE_NAME=\${meal_plans_table_name}
+      - USERS_TABLE_NAME=${users_table_name}
+      - RECIPES_TABLE_NAME=${recipes_table_name}
+      - RECIPE_COLLECTIONS_TABLE_NAME=${recipe_collections_table_name}
+      - MEAL_PLANS_TABLE_NAME=${meal_plans_table_name}
     command: [
         "sh",
         "-c",
