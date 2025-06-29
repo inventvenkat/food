@@ -39,7 +39,7 @@ sudo cat <<EOF > $APP_DIR/docker-compose.aws.yml
 version: '3.8'
 services:
   client:
-    image: ${dockerhub_username}/goodfood:client-latest
+    image: ${dockerhub_username}/goodfood-client:latest
     ports:
       - "3003:80"
     depends_on:
@@ -54,7 +54,7 @@ services:
         awslogs-group: "${project_name}-client-logs"
         awslogs-region: "${aws_region}"
   server:
-    image: ${dockerhub_username}/goodfood:server-latest
+    image: ${dockerhub_username}/goodfood-server:latest
     ports:
       - "3002:3001"
     environment:

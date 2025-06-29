@@ -49,25 +49,25 @@ variable "desired_capacity_asg" {
 variable "users_table_name" {
   description = "Name for the DynamoDB Users table."
   type        = string
-  default     = "goodfood_users"
+  default     = "RecipeAppUsers"
 }
 
 variable "recipes_table_name" {
   description = "Name for the DynamoDB Recipes table."
   type        = string
-  default     = "goodfood_recipes"
+  default     = "RecipeAppRecipes"
 }
 
 variable "recipe_collections_table_name" {
   description = "Name for the DynamoDB Recipe Collections table."
   type        = string
-  default     = "goodfood_recipe_collections"
+  default     = "RecipeAppRecipeCollections"
 }
 
 variable "meal_plans_table_name" {
   description = "Name for the DynamoDB Meal Plans table."
   type        = string
-  default     = "goodfood_meal_plans"
+  default     = "RecipeAppMealPlans"
 }
 
 variable "jwt_secret" {

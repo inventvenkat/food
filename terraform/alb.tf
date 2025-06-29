@@ -16,16 +16,16 @@ resource "aws_lb" "app" {
 
 resource "aws_lb_target_group" "app" {
   name        = "${var.project_name}-tg"
-  port        = var.app_client_port_nginx # Port Nginx listens on (80) on the EC2 instances
+  port        = 3003 # Port where client nginx is exposed on EC2 instances
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "instance" # Instances in the ASG
 
   health_check {
     enabled             = true
-    path                = "/healthz" # Or a specific health check endpoint like /api/health
+    path                = "/healthz" # Health check endpoint provided by nginx
     protocol            = "HTTP"
-    port                = "traffic-port" # Health check on the same port as traffic
+    port                = "3003" # Health check on port 3003 where client is exposed
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 5

@@ -39,9 +39,9 @@ resource "aws_security_group" "ec2_instance" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description     = "HTTP from ALB"
-    from_port       = var.app_client_port_nginx # Port Nginx listens on (80)
-    to_port         = var.app_client_port_nginx
+    description     = "HTTP from ALB to client container"
+    from_port       = 3003 # Port where client nginx is exposed on EC2
+    to_port         = 3003
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id] # Only allow traffic from our ALB
   }
