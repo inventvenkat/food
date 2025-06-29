@@ -28,12 +28,12 @@ jobs:
 
       - name: Push Docker images
         run: |
-          docker push inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER}
-          docker push inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER}
+          docker push inventvenkat/goodfood:client-${GITHUB_RUN_NUMBER}
+          docker push inventvenkat/goodfood:server-${GITHUB_RUN_NUMBER}
 
       - name: Tag and push latest
         run: |
-          docker tag inventvenkat/goodfood/client:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/client:latest
-          docker push inventvenkat/goodfood/client:latest
-          docker tag inventvenkat/goodfood/server:${GITHUB_RUN_NUMBER} inventvenkat/goodfood/server:latest
-          docker push inventvenkat/goodfood/server:latest
+          docker tag inventvenkat/goodfood:client-${GITHUB_RUN_NUMBER} inventvenkat/goodfood:client-latest
+          docker push inventvenkat/goodfood:client-latest
+          docker tag inventvenkat/goodfood:server-${GITHUB_RUN_NUMBER} inventvenkat/goodfood:server-latest
+          docker push inventvenkat/goodfood:server-latest
