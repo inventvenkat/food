@@ -85,13 +85,13 @@ Next Steps:
    aws ssm start-session --target INSTANCE_ID --region ${var.aws_region}
    (Replace INSTANCE_ID with an ID from your ASG)
 
-8. HTTPS:
-   The ALB is currently configured for HTTP only. The 'terraform/alb.tf' file contains
-   a commented-out section for an HTTPS listener. To enable HTTPS:
-   a. Provision an SSL certificate in AWS Certificate Manager (ACM) for your domain (goodfood.com).
-   b. Uncomment the 'aws_lb_listener' "https" resource in 'terraform/alb.tf'.
-   c. Replace the placeholder 'certificate_arn' with your ACM certificate ARN.
-   d. Update your domain's DNS records to point to the ALB DNS name.
+8. DNS Setup:
+   The ALB is configured with HTTPS support using your ACM certificate for *.cookfood.xyz.
+   To complete the setup:
+   a. In GoDaddy DNS, create an A record for 'cookfood.xyz' pointing to the ALB's IP addresses.
+   b. Get the ALB IP addresses by resolving the ALB DNS name (nslookup or dig command).
+   c. The certificate validation CNAME should already be added to GoDaddy for ACM.
+   d. The ALB will automatically redirect HTTP to HTTPS and serve your application securely.
 
 9. Monitoring & Logs:
    - EC2 instance user_data logs: /var/log/user-data.log on the instance.

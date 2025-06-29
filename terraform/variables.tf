@@ -104,5 +104,5 @@ variable "docker_compose_version" {
 variable "acm_certificate_arn" {
   description = "The ARN of the ACM certificate for the domain."
   type        = string
-  default     = "arn:aws:acm:us-east-1:872450838091:certificate/6b0c769b-720c-445f-b209-74c1bd023c0d"
+  default     = "arn:aws:acm:us-east-1:872450838091:certificate/f8223c19-4279-4ce4-925a-47117fd03c0e"
 }
