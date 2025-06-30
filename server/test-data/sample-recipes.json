@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Classic Chocolate Chip Cookies",
+    "description": "Soft and chewy chocolate chip cookies that are perfect for any occasion. This family recipe has been passed down for generations.",
+    "cookingTime": "25 minutes",
+    "servings": 24,
+    "instructions": "<p>1. Preheat oven to 375°F (190°C).</p><p>2. In a large bowl, cream together butter and sugars until light and fluffy.</p><p>3. Beat in eggs one at a time, then add vanilla.</p><p>4. In a separate bowl, whisk together flour, baking soda, and salt.</p><p>5. Gradually mix dry ingredients into wet ingredients.</p><p>6. Stir in chocolate chips.</p><p>7. Drop rounded tablespoons of dough onto ungreased baking sheets.</p><p>8. Bake for 9-11 minutes or until golden brown.</p><p>9. Cool on baking sheet for 2 minutes before transferring to wire rack.</p>",
+    "ingredients": [
+      {"name": "All-purpose flour", "amount": "2¼", "unit": "cups"},
+      {"name": "Baking soda", "amount": "1", "unit": "tsp"},
+      {"name": "Salt", "amount": "1", "unit": "tsp"},
+      {"name": "Butter, softened", "amount": "1", "unit": "cup"},
+      {"name": "Granulated sugar", "amount": "¾", "unit": "cup"},
+      {"name": "Brown sugar, packed", "amount": "¾", "unit": "cup"},
+      {"name": "Large eggs", "amount": "2", "unit": ""},
+      {"name": "Vanilla extract", "amount": "2", "unit": "tsp"},
+      {"name": "Chocolate chips", "amount": "2", "unit": "cups"}
+    ],
+    "category": "Dessert",
+    "tags": ["cookies", "chocolate", "baking", "family-friendly"],
+    "image": ""
+  },
+  {
+    "name": "Mediterranean Quinoa Salad",
+    "description": "A fresh and healthy quinoa salad packed with Mediterranean flavors. Perfect for meal prep or as a light lunch.",
+    "cookingTime": "20 minutes",
+    "servings": 4,
+    "instructions": "<p>1. Rinse quinoa under cold water until water runs clear.</p><p>2. In a medium saucepan, bring 2 cups water to boil. Add quinoa, reduce heat to low, cover and simmer for 15 minutes.</p><p>3. Remove from heat and let stand 5 minutes. Fluff with a fork and let cool.</p><p>4. Meanwhile, dice cucumber, tomatoes, and red onion.</p><p>5. Crumble feta cheese and roughly chop olives.</p><p>6. In a small bowl, whisk together olive oil, lemon juice, garlic, oregano, salt, and pepper.</p><p>7. In a large bowl, combine cooled quinoa, vegetables, feta, and olives.</p><p>8. Pour dressing over salad and toss to combine.</p><p>9. Garnish with fresh parsley and serve.</p>",
+    "ingredients": [
+      {"name": "Quinoa", "amount": "1", "unit": "cup"},
+      {"name": "Cucumber, diced", "amount": "1", "unit": ""},
+      {"name": "Cherry tomatoes, halved", "amount": "1", "unit": "cup"},
+      {"name": "Red onion, diced", "amount": "¼", "unit": "cup"},
+      {"name": "Feta cheese, crumbled", "amount": "½", "unit": "cup"},
+      {"name": "Kalamata olives, pitted", "amount": "¼", "unit": "cup"},
+      {"name": "Extra virgin olive oil", "amount": "3", "unit": "tbsp"},
+      {"name": "Fresh lemon juice", "amount": "2", "unit": "tbsp"},
+      {"name": "Garlic, minced", "amount": "1", "unit": "clove"},
+      {"name": "Dried oregano", "amount": "1", "unit": "tsp"},
+      {"name": "Fresh parsley, chopped", "amount": "¼", "unit": "cup"}
+    ],
+    "category": "Salad",
+    "tags": ["healthy", "mediterranean", "quinoa", "vegetarian", "meal-prep"],
+    "image": ""
+  },
+  {
+    "name": "Spicy Thai Basil Chicken",
+    "description": "An authentic Thai stir-fry with ground chicken, Thai basil, and chilies. Served over jasmine rice for a complete meal.",
+    "cookingTime": "15 minutes",
+    "servings": 2,
+    "instructions": "<p>1. Heat oil in a large wok or skillet over high heat.</p><p>2. Add garlic and chilies, stir-fry for 30 seconds until fragrant.</p><p>3. Add ground chicken and cook, breaking it up, until no longer pink (about 3-4 minutes).</p><p>4. Add fish sauce, soy sauce, and sugar. Stir to combine.</p><p>5. Add green beans and cook for 2-3 minutes until tender-crisp.</p><p>6. Remove from heat and stir in Thai basil leaves until wilted.</p><p>7. Serve immediately over jasmine rice.</p><p>8. Garnish with additional basil leaves and sliced chilies if desired.</p>",
+    "ingredients": [
+      {"name": "Vegetable oil", "amount": "2", "unit": "tbsp"},
+      {"name": "Garlic, minced", "amount": "4", "unit": "cloves"},
+      {"name": "Thai chilies, minced", "amount": "2-4", "unit": ""},
+      {"name": "Ground chicken", "amount": "1", "unit": "lb"},
+      {"name": "Fish sauce", "amount": "2", "unit": "tbsp"},
+      {"name": "Soy sauce", "amount": "1", "unit": "tbsp"},
+      {"name": "Sugar", "amount": "1", "unit": "tsp"},
+      {"name": "Green beans, trimmed", "amount": "½", "unit": "cup"},
+      {"name": "Thai basil leaves", "amount": "1", "unit": "cup"},
+      {"name": "Jasmine rice, cooked", "amount": "2", "unit": "cups"}
+    ],
+    "category": "Main Course",
+    "tags": ["thai", "spicy", "chicken", "stir-fry", "quick"],
+    "image": ""
+  },
+  {
+    "name": "Homemade Sourdough Bread",
+    "description": "Artisanal sourdough bread with a crispy crust and tangy flavor. Requires a sourdough starter but worth the effort!",
+    "cookingTime": "24 hours",
+    "servings": 1,
+    "instructions": "<p>1. In a large bowl, mix sourdough starter with water until well combined.</p><p>2. Add flour and salt, mix until a shaggy dough forms.</p><p>3. Cover and let rest for 30 minutes (autolyse).</p><p>4. Perform 4 sets of stretch and folds, 30 minutes apart.</p><p>5. Cover and bulk ferment for 4-6 hours at room temperature.</p><p>6. Pre-shape the dough and let rest 20 minutes.</p><p>7. Final shape and place in banneton, seam-side up.</p><p>8. Refrigerate overnight (12-48 hours).</p><p>9. Preheat Dutch oven to 475°F (245°C).</p><p>10. Score the dough and bake covered for 20 minutes.</p><p>11. Remove lid and bake 20-25 minutes until golden brown.</p><p>12. Cool completely before slicing.</p>",
+    "ingredients": [
+      {"name": "Active sourdough starter", "amount": "100", "unit": "g"},
+      {"name": "Water", "amount": "375", "unit": "g"},
+      {"name": "Bread flour", "amount": "500", "unit": "g"},
+      {"name": "Salt", "amount": "10", "unit": "g"}
+    ],
+    "category": "Bread",
+    "tags": ["sourdough", "bread", "artisan", "fermentation", "baking"],
+    "image": ""
+  },
+  {
+    "name": "Creamy Mushroom Risotto",
+    "description": "Rich and creamy risotto with mixed mushrooms and Parmesan cheese. A comforting Italian classic that's perfect for dinner.",
+    "cookingTime": "45 minutes",
+    "servings": 4,
+    "instructions": "<p>1. Heat chicken stock in a saucepan and keep warm.</p><p>2. In a large skillet, sauté mushrooms with 1 tbsp butter until golden. Season and set aside.</p><p>3. In a heavy-bottomed pan, heat remaining butter and olive oil.</p><p>4. Add onion and cook until translucent, about 3 minutes.</p><p>5. Add garlic and cook for 1 minute.</p><p>6. Add rice and stir for 2 minutes until edges are translucent.</p><p>7. Add wine and stir until absorbed.</p><p>8. Add warm stock one ladle at a time, stirring constantly.</p><p>9. Continue until rice is creamy and al dente (about 18-20 minutes).</p><p>10. Stir in mushrooms, Parmesan, and herbs.</p><p>11. Season to taste and serve immediately.</p>",
+    "ingredients": [
+      {"name": "Chicken stock", "amount": "6", "unit": "cups"},
+      {"name": "Mixed mushrooms, sliced", "amount": "8", "unit": "oz"},
+      {"name": "Butter", "amount": "4", "unit": "tbsp"},
+      {"name": "Olive oil", "amount": "1", "unit": "tbsp"},
+      {"name": "Onion, finely diced", "amount": "1", "unit": ""},
+      {"name": "Garlic, minced", "amount": "2", "unit": "cloves"},
+      {"name": "Arborio rice", "amount": "1½", "unit": "cups"},
+      {"name": "White wine", "amount": "½", "unit": "cup"},
+      {"name": "Parmesan cheese, grated", "amount": "½", "unit": "cup"},
+      {"name": "Fresh thyme", "amount": "1", "unit": "tbsp"},
+      {"name": "Fresh parsley, chopped", "amount": "2", "unit": "tbsp"}
+    ],
+    "category": "Main Course",
+    "tags": ["italian", "risotto", "mushrooms", "comfort-food", "vegetarian"],
+    "image": ""
+  }
+]

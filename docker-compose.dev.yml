@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3003:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    command: ["/bin/bash", "-c", "/usr/local/bin/wait-for-it.sh server:3001 -t 60 -- nginx -g 'daemon off;'"]
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3001"
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=yourSuperSecretKeyForJWTs
+      - APP_PORT=3001
+      - DYNAMODB_ENDPOINT_OVERRIDE=http://dynamodb-local:8000
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_REGION=localhost
+    volumes:
+      - ./server/uploads:/usr/src/app/uploads
+      # Mount source code for development (optional)
+      # - ./server:/usr/src/app
+      # - /usr/src/app/node_modules
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+    command: ["/usr/local/bin/wait-for-it.sh", "dynamodb-local:8000", "--", "node", "index.js"]
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    networks:
+      - app-network
+    environment:
+      - JAVA_OPTS=-Djava.library.path=./DynamoDBLocal_lib
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Alternative DynamoDB Local with persistence (uncomment if needed)
+  # dynamodb-local-persistent:
+  #   image: amazon/dynamodb-local:latest
+  #   ports:
+  #     - "8000:8000"
+  #   command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+  #   volumes:
+  #     - dynamodb-data:/data
+  #   networks:
+  #     - app-network
+  #   environment:
+  #     - JAVA_OPTS=-Djava.library.path=./DynamoDBLocal_lib
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 10s
+
+volumes:
+  dynamodb-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

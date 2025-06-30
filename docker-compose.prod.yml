@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-yourProductionSecretKey}
+      - APP_PORT=3001
+      # Production DynamoDB settings (use AWS DynamoDB)
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      # AWS credentials should be provided via IAM roles in production
+    volumes:
+      - recipe-uploads:/usr/src/app/uploads
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  recipe-uploads:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+
+# Production deployment considerations:
+# 1. Use external AWS DynamoDB (not DynamoDB Local)
+# 2. Set up proper environment variables for production
+# 3. Use AWS IAM roles for DynamoDB access
+# 4. Configure SSL/TLS termination at load balancer level
+# 5. Set up proper logging and monitoring
+# 6. Use container registry for image storage
+# 7. Configure resource limits and scaling policies
