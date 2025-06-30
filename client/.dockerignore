@@ -47,5 +47,5 @@ coverage/
 # Development files
 .eslintrc*
 .prettierrc*
-*.config.js
+# *.config.js - commented out to allow tailwind.config.js
 EOF < /dev/null
