@@ -1,6 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}", 
+    "./public/index.html",
+    "./src/**/*.css"
+  ],
   theme: {
     extend: {
       colors: {
@@ -117,4 +121,27 @@ module.exports = {
     },
   },
   plugins: [],
+  safelist: [
+    // Ensure design system classes are always included
+    'btn-primary',
+    'btn-secondary', 
+    'btn-outline',
+    'btn-ghost',
+    'btn-sm',
+    'btn-lg',
+    'input-style',
+    'input-style-sm',
+    'input-error',
+    'card',
+    'card-hover',
+    'card-interactive',
+    'heading-xl',
+    'heading-lg',
+    'heading-md',
+    'heading-sm',
+    'body-lg',
+    'body-base',
+    'body-sm',
+    'container-app'
+  ],
 }

@@ -17,6 +17,9 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Clear any existing build
+RUN rm -rf build
+
 # Build the application
 RUN npm run build
 
