@@ -114,15 +114,21 @@ router.post('/generate', authMiddleware, async (req, res) => {
     // Fetch all meal plan entries for the user in the date range
     // Note: getMealPlanEntriesForUserAndDateRange handles pagination internally if we fetch all.
     // For very large ranges/many entries, this might need to be batched.
+    console.log('[ShoppingList] Calling getMealPlanEntriesForUserAndDateRange with:', { userId, startDate, endDate });
+    
     let allMealPlanEntries = [];
     let lastKey = null;
     do {
         const { entries, lastEvaluatedKey: newLek } = await getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate, 100, lastKey);
+        console.log('[ShoppingList] Got batch of entries:', entries.length, 'lastKey:', !!newLek);
         allMealPlanEntries.push(...entries);
         lastKey = newLek;
     } while (lastKey);
 
     console.log('[ShoppingList] Found meal plan entries:', allMealPlanEntries.length);
+    console.log('[ShoppingList] Entries with public recipes:', allMealPlanEntries.filter(entry => entry.recipe?.isPublic === true).length);
+    console.log('[ShoppingList] Entries with private recipes:', allMealPlanEntries.filter(entry => entry.recipe?.isPublic === false).length);
+    console.log('[ShoppingList] Entries with null recipes:', allMealPlanEntries.filter(entry => entry.recipe === null).length);
     allMealPlanEntries.forEach((entry, index) => {
       console.log(`[ShoppingList] Entry ${index + 1}:`, {
         mealPlanId: entry.mealPlanId,
@@ -216,17 +222,35 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
       const scaleFactor = entry.plannedServings / recipeDetails.servings;
       console.log(`[ShoppingList] Processing recipe ${recipeDetails.name}: ${entry.plannedServings} servings (scale ${scaleFactor}x from ${recipeDetails.servings})`);
-      console.log(`[ShoppingList] Recipe ingredients list:`, recipeDetails.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`));
+      console.log(`[ShoppingList] Recipe ingredients list:`, recipeDetails.ingredients.map(ing => `${ing.quantity || ing.amount} ${ing.unit} ${ing.name}`));
 
       recipeDetails.ingredients.forEach((ing, index) => {
-        if (!ing.name || ing.quantity === undefined || ing.unit === undefined) {
-          console.warn(`[ShoppingList] Skipping ingredient ${index} in recipe ${recipeDetails.name} due to missing fields:`, ing);
+        // Handle both 'quantity' and 'amount' field names for compatibility
+        let quantity = ing.quantity !== undefined ? ing.quantity : ing.amount;
+        let unit = ing.unit || '';
+        
+        // Skip ingredients without a name
+        if (!ing.name || ing.name.trim() === '') {
+          console.warn(`[ShoppingList] Skipping ingredient ${index} in recipe ${recipeDetails.name} due to missing name:`, ing);
           return;
         }
-        const scaledQuantityStr = parseAndScaleQuantity(ing.quantity, scaleFactor);
-        const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`;
         
-        console.log(`[ShoppingList] Processing ingredient: ${ing.quantity} ${ing.unit} ${ing.name} → ${scaledQuantityStr} ${ing.unit} ${ing.name}`);
+        // Handle empty quantity/amount by defaulting to "1"
+        if (quantity === '' || quantity === null || quantity === undefined) {
+          console.warn(`[ShoppingList] Using default quantity "1" for ingredient ${index} (${ing.name}) in recipe ${recipeDetails.name}:`, ing);
+          quantity = "1";
+        }
+        
+        // Handle empty unit by defaulting to "item" or "piece"
+        if (unit === '' || unit === null || unit === undefined) {
+          console.warn(`[ShoppingList] Using default unit "item" for ingredient ${index} (${ing.name}) in recipe ${recipeDetails.name}:`, ing);
+          unit = "item";
+        }
+        
+        const scaledQuantityStr = parseAndScaleQuantity(quantity, scaleFactor);
+        const key = `${ing.name.toLowerCase().trim()}_${unit.toLowerCase().trim()}`;
+        
+        console.log(`[ShoppingList] Processing ingredient: ${quantity} ${unit} ${ing.name} → ${scaledQuantityStr} ${unit} ${ing.name}`);
 
         if (aggregatedIngredients[key]) {
           // Basic aggregation: sum quantities if possible, otherwise concatenate
@@ -246,7 +270,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
           aggregatedIngredients[key] = {
             name: ing.name,
             quantity: scaledQuantityStr,
-            unit: ing.unit,
+            unit: unit,
           };
         }
       });
