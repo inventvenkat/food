@@ -20,8 +20,8 @@ const CreateRecipePage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [llmPrompt, setLlmPrompt] = useState('');
-  const [llmJsonOutput, setLlmJsonOutput] = useState('');
+  const [recipeTextInput, setRecipeTextInput] = useState('');
+  const [isParsingWithAI, setIsParsingWithAI] = useState(false);
 
   const handleRecipeDetailsExtracted = (parsedRecipeData) => {
     console.log("Data received by handleRecipeDetailsExtracted:", parsedRecipeData); // DEBUG LOG
@@ -201,68 +201,80 @@ const CreateRecipePage = () => {
     }
   };
 
-  const handleGenerateLlmPrompt = () => {
-    const jsonStructure = {
-      title: "string | null",
-      description: "string | null",
-      cookingTime: "string | null",
-      servings: "string | null",
-      category: "string | null",
-      tags: ["string", "string"],
-      ingredients: [
-        { quantity: "string | null", unit: "string | null", name: "string" }
-      ],
-      instructions: "string | null"
-    };
-    const prompt = `Please parse the recipe text that I will provide to you (e.g., by pasting or uploading a file directly to you) and reformat it into the JSON structure specified below. Ensure all fields are populated as accurately as possible. If a field cannot be determined, use an empty string "" or null for that field, or an empty array [] for ingredients and tags.
-
-JSON Structure to use:
-${JSON.stringify(jsonStructure, null, 2)}
-
-Your JSON Output (ensure it's a single, valid JSON object):
-\`\`\`json
-[LLM should output the JSON here]
-\`\`\`
-`;
-    setLlmPrompt(prompt);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(prompt)
-        .then(() => {
-          setSuccess('LLM formatting instructions copied to clipboard! Paste them into your LLM, then provide your recipe text/file.');
-          setTimeout(() => setSuccess(''), 7000);
-        })
-        .catch(err => {
-          console.error('Failed to copy text to clipboard:', err);
-          setError('Failed to copy to clipboard. Please copy manually from the text area below.');
-          setTimeout(() => setError(''), 5000);
-        });
-    } else {
-      setError('Clipboard API not available. Please copy manually from the text area below.');
-      setTimeout(() => setError(''), 5000);
-    }
-  };
-
-  const handleFillFormFromLlmJson = () => {
-    if (!llmJsonOutput.trim()) {
-      setError('Please paste the JSON output from your LLM first.');
+  const handleParseWithAI = async () => {
+    if (!recipeTextInput.trim()) {
+      setError('Please enter recipe text first.');
       setTimeout(() => setError(''), 3000);
       return;
     }
-    try {
-      let cleanedJson = llmJsonOutput.replace(/^```json\s*|```$/g, '').trim();
-      console.log("Raw LLM JSON Output (cleaned):", cleanedJson); // DEBUG LOG
-      const parsedData = JSON.parse(cleanedJson);
-      console.log("Parsed LLM Data (JavaScript Object):", parsedData); // DEBUG LOG
 
-      handleRecipeDetailsExtracted(parsedData);
+    setIsParsingWithAI(true);
+    setError('');
+    setSuccess('');
 
-      setSuccess('Form populated from LLM output! Please review.');
-      setTimeout(() => setSuccess(''), 4000);
-    } catch (e) {
-      console.error("Error parsing LLM JSON:", e);
-      setError('Invalid JSON format from LLM. Please ensure it is valid JSON. Error: ' + e.message);
-      setTimeout(() => setError(''), 5000);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('You must be logged in to use AI parsing.');
+      setIsParsingWithAI(false);
+      return;
     }
+
+    try {
+      const response = await fetch('/api/recipes/parse-with-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ recipeText: recipeTextInput }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to parse recipe with AI');
+      }
+
+      if (result.success && result.data) {
+        handleRecipeDetailsExtracted(result.data);
+        
+        let message = 'Recipe parsed successfully! ';
+        if (result.source === 'ai') {
+          message += 'Used AI model for parsing.';
+        } else if (result.source === 'fallback') {
+          message += 'AI parsing failed, used fallback parser.';
+        }
+        
+        setSuccess(message);
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        throw new Error('Invalid response from AI parsing');
+      }
+
+    } catch (err) {
+      console.error('AI parsing error:', err);
+      setError(err.message || 'Failed to parse recipe. Please try again or fill the form manually.');
+      setTimeout(() => setError(''), 7000);
+    } finally {
+      setIsParsingWithAI(false);
+    }
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      cookingTime: '',
+      servings: '',
+      instructions: '',
+      category: '',
+      tags: '',
+      ingredients: [{ name: '', quantity: '1', unit: '' }],
+      isPublic: false,
+    });
+    setRecipeTextInput('');
+    setSuccess('Form cleared! You can start fresh.');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   return (
@@ -286,64 +298,45 @@ Your JSON Output (ensure it's a single, valid JSON object):
               <span>AI-Powered Recipe Assistant</span>
             </Card.Title>
             <p className="body-base text-neutral-600">
-              Have a recipe in text format or a document? Let our AI assistant help you format it perfectly. 
-              Simply follow these steps to extract all the details automatically.
+              Have a recipe in text format? Our AI assistant will automatically parse and format it for you. 
+              Just paste your recipe text and click the button below. You can also skip this and fill the form manually.
             </p>
           </Card.Header>
           
           <Card.Content>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="text-center p-4 bg-primary-50 rounded-xl">
-                <div className="text-2xl mb-2">📋</div>
+                <div className="text-2xl mb-2">📝</div>
                 <h3 className="font-semibold text-primary-800 mb-1">Step 1</h3>
-                <p className="text-sm text-primary-700">Copy formatting instructions</p>
+                <p className="text-sm text-primary-700">Paste your recipe text</p>
               </div>
               <div className="text-center p-4 bg-secondary-50 rounded-xl">
-                <div className="text-2xl mb-2">🤖</div>
-                <h3 className="font-semibold text-secondary-800 mb-1">Step 2</h3>
-                <p className="text-sm text-secondary-700">Use your favorite LLM</p>
-              </div>
-              <div className="text-center p-4 bg-primary-50 rounded-xl">
                 <div className="text-2xl mb-2">✨</div>
-                <h3 className="font-semibold text-primary-800 mb-1">Step 3</h3>
-                <p className="text-sm text-primary-700">Paste result to auto-fill</p>
+                <h3 className="font-semibold text-secondary-800 mb-1">Step 2</h3>
+                <p className="text-sm text-secondary-700">AI automatically parses and fills form</p>
               </div>
             </div>
             
             <div className="space-y-4">
-              <Button
-                onClick={handleGenerateLlmPrompt}
-                className="w-full md:w-auto"
-              >
-                📋 Copy LLM Formatting Instructions
-              </Button>
-              
-              {llmPrompt && (
-                <Textarea
-                  label="Instructions for LLM (copied to clipboard)"
-                  value={llmPrompt}
-                  readOnly
-                  rows={12}
-                  className="bg-neutral-50"
-                />
-              )}
-              
               <Textarea
-                label="Paste JSON Output from LLM Here"
-                placeholder="Paste the JSON output from your LLM here..."
-                value={llmJsonOutput}
-                onChange={(e) => setLlmJsonOutput(e.target.value)}
+                label="Recipe Text"
+                placeholder="Paste your recipe text here... (ingredients, instructions, cooking time, etc.)"
+                value={recipeTextInput}
+                onChange={(e) => setRecipeTextInput(e.target.value)}
                 rows={8}
-                helper="After pasting your recipe text into your LLM along with the instructions above, copy the JSON response here."
+                helper="Paste any recipe text - our AI will extract ingredients, instructions, cooking time, and other details automatically."
               />
               
               <Button
-                onClick={handleFillFormFromLlmJson}
-                variant="secondary"
+                onClick={handleParseWithAI}
                 className="w-full md:w-auto"
-                disabled={!llmJsonOutput.trim()}
+                disabled={!recipeTextInput.trim() || isParsingWithAI}
               >
-                ✨ Fill Form from LLM JSON
+                {isParsingWithAI ? (
+                  <>🤖 Parsing with AI...</>
+                ) : (
+                  <>🤖 Parse Recipe with AI</>
+                )}
               </Button>
             </div>
           </Card.Content>
@@ -351,15 +344,19 @@ Your JSON Output (ensure it's a single, valid JSON object):
 
         <div className="flex items-center my-8">
           <div className="flex-1 border-t border-neutral-300"></div>
-          <span className="px-4 text-neutral-500 text-sm font-medium">or fill manually</span>
+          <span className="px-4 text-neutral-500 text-sm font-medium">or create recipe manually</span>
           <div className="flex-1 border-t border-neutral-300"></div>
         </div>
 
         <Card>
           <Card.Header>
-            <Card.Title>Recipe Details</Card.Title>
+            <Card.Title className="flex items-center space-x-2">
+              <span className="text-2xl">📝</span>
+              <span>Manual Recipe Creation</span>
+            </Card.Title>
             <p className="body-base text-neutral-600">
-              Fill in the basic information about your recipe. Required fields are marked with an asterisk.
+              Prefer to create your recipe from scratch? Fill in each field manually below. 
+              Required fields are marked with an asterisk. You can always use the AI assistant above to auto-fill this form.
             </p>
           </Card.Header>
           
@@ -546,9 +543,18 @@ Your JSON Output (ensure it's a single, valid JSON object):
 
               <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-neutral-200">
                 <Button
+                  type="button"
+                  variant="ghost"
+                  size="lg"
+                  onClick={handleClearForm}
+                  className="text-neutral-600 hover:text-neutral-800"
+                >
+                  🗑️ Clear Form
+                </Button>
+                <div className="flex-1"></div>
+                <Button
                   type="submit"
                   size="lg"
-                  className="sm:ml-auto"
                 >
                   🍳 Create Recipe
                 </Button>

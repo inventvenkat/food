@@ -18,6 +18,7 @@ const {
 
 const multer = require('multer');
 const { extractTextFromFile, customIngredientParser } = require('../utils/recipeParser');
+const AIRecipeParser = require('../utils/aiRecipeParser');
 const { v4: uuidv4 } = require('uuid');
 const { BatchOperations } = require('../utils/batchOperations');
 
@@ -230,6 +231,60 @@ router.post('/upload-extract', authMiddleware, recipeUploadParser.single('recipe
         return res.status(400).json({ message: error.message });
     }
     res.status(500).send('Server Error during recipe file processing.');
+  }
+});
+
+// @route   POST /api/recipes/parse-with-ai
+// @desc    Parse recipe text using local AI model (Ollama)
+// @access  Private
+router.post('/parse-with-ai', authMiddleware, async (req, res) => {
+  const { recipeText } = req.body;
+
+  if (!recipeText || typeof recipeText !== 'string' || recipeText.trim().length === 0) {
+    return res.status(400).json({ 
+      message: 'Recipe text is required and must be a non-empty string',
+      fallback: true 
+    });
+  }
+
+  const aiParser = new AIRecipeParser();
+  
+  try {
+    // First, try AI parsing
+    const aiParsedData = await aiParser.parseRecipeWithAI(recipeText);
+    
+    res.json({
+      success: true,
+      data: aiParsedData,
+      source: 'ai',
+      message: 'Recipe parsed successfully using AI'
+    });
+
+  } catch (aiError) {
+    console.error('AI parsing failed:', aiError.message);
+    
+    // Fallback to rule-based parser
+    try {
+      const fallbackParsedData = customIngredientParser(recipeText);
+      
+      res.json({
+        success: true,
+        data: fallbackParsedData,
+        source: 'fallback',
+        message: 'AI parsing failed, used rule-based parser as fallback',
+        aiError: aiError.message
+      });
+
+    } catch (fallbackError) {
+      console.error('Both AI and fallback parsing failed:', fallbackError.message);
+      
+      res.status(500).json({
+        success: false,
+        message: 'Both AI and rule-based parsing failed',
+        aiError: aiError.message,
+        fallbackError: fallbackError.message
+      });
+    }
   }
 });
 
