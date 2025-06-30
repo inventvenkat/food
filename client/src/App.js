@@ -58,7 +58,7 @@ function App() {
     // To redirect, LoginPage/RegisterPage or a wrapper component for Routes would be better.
     // For now, Navbar will just update its state. User might need to manually navigate or refresh.
     // A more robust solution would involve useNavigate, potentially by wrapping Routes in a component.
-    alert("You have been logged out."); // Simple feedback
+    // User logged out - no popup needed
   };
 
   return (

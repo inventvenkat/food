@@ -110,7 +110,9 @@ const MyRecipesPage = () => {
 
   const handleGenerateShoppingList = () => {
     if (selectedRecipes.size === 0) {
-      alert('Please select at least one recipe.'); return;
+      setError('Please select at least one recipe.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     const ids = Array.from(selectedRecipes).join(',');
     // This needs to be updated if shopping list generation relies on plannedServings from MealPlan

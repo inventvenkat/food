@@ -145,7 +145,8 @@ const MealPlannerPage = () => {
 
   const handleAddMealPlanEntry = async () => {
     if (!selectedSlotInfo || !selectedRecipeId || !selectedMealType || modalPlannedServings < 1) {
-      alert('Please select a recipe, meal type, and specify valid servings.');
+      setError('Please select a recipe, meal type, and specify valid servings.');
+      setTimeout(() => setError(''), 3000);
       return;
     }
     const token = localStorage.getItem('token');
@@ -202,10 +203,11 @@ const MealPlannerPage = () => {
       setMyEvents(prevEvents => [...prevEvents, newEvent]);
       
       setShowAddModal(false);
-      alert('Meal plan entry added successfully!');
+      // Meal plan entry added silently
     } catch (err) {
       console.error("Add Meal Plan Entry error:", err);
-      alert(`Error: ${err.message}`);
+      setError(err.message);
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -230,10 +232,11 @@ const MealPlannerPage = () => {
         throw new Error(errorMessage);
       }
       fetchMealPlans();
-      alert('Meal plan entry removed successfully!');
+      // Meal plan entry removed silently
     } catch (err) {
       console.error("Delete Meal Plan Entry error:", err.message);
-      alert(`Error: ${err.message}`); setError(err.message);
+      setError(err.message);
+      setTimeout(() => setError(''), 3000);
     } finally {
       setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null);
     }
@@ -245,7 +248,7 @@ const MealPlannerPage = () => {
         setMealPlanEntryToDelete({ id: event.id, title: event.title });
         setShowDeleteConfirmModal(true);
       } else {
-        alert(`Clicked: ${event.title}. No ID found for deletion options.`);
+        // No action for events without ID
       }
     },
     []
@@ -253,10 +256,14 @@ const MealPlannerPage = () => {
 
   const handleGenerateShoppingListFromPlan = () => {
     if (!shoppingListStartDate || !shoppingListEndDate) {
-      alert('Please select a valid start and end date for the shopping list.'); return;
+      setError('Please select a valid start and end date for the shopping list.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     if (moment(shoppingListEndDate).isBefore(moment(shoppingListStartDate))) {
-      alert('End date cannot be before start date.'); return;
+      setError('End date cannot be before start date.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     navigate(`/shopping-list?startDate=${shoppingListStartDate}&endDate=${shoppingListEndDate}`);
   };
