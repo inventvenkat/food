@@ -103,6 +103,8 @@ router.post('/generate', authMiddleware, async (req, res) => {
   const { startDate, endDate } = req.body;
   const userId = req.user.id;
 
+  console.log('[ShoppingList] Generating shopping list for user:', userId, 'from:', startDate, 'to:', endDate);
+
   // TODO: Add robust date validation
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'Please provide both start and end dates.' });
@@ -120,7 +122,19 @@ router.post('/generate', authMiddleware, async (req, res) => {
         lastKey = newLek;
     } while (lastKey);
 
+    console.log('[ShoppingList] Found meal plan entries:', allMealPlanEntries.length);
+    allMealPlanEntries.forEach((entry, index) => {
+      console.log(`[ShoppingList] Entry ${index + 1}:`, {
+        mealPlanId: entry.mealPlanId,
+        recipeId: entry.recipeId,
+        hasRecipe: !!entry.recipe,
+        recipeName: entry.recipe?.name || 'No recipe populated',
+        plannedServings: entry.plannedServings
+      });
+    });
+
     if (allMealPlanEntries.length === 0) {
+      console.log('[ShoppingList] No meal plan entries found, returning empty');
       return res.status(200).json({}); // Return empty object if no meals in range
     }
 
@@ -173,26 +187,46 @@ router.post('/generate', authMiddleware, async (req, res) => {
       if (entry.recipe) {
         // Recipe already populated from MealPlan optimization
         recipeDetails = entry.recipe;
+        console.log('[ShoppingList] Using populated recipe:', recipeDetails.name, 'ID:', recipeDetails.recipeId);
       } else {
         // Get from batch loaded recipes
         const plainRecipeId = entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId;
         recipeDetails = recipeMap.get(plainRecipeId);
+        console.log('[ShoppingList] Using batch loaded recipe:', recipeDetails?.name || 'NOT FOUND', 'for ID:', plainRecipeId);
       }
+      
+      console.log('[ShoppingList] Recipe details for processing:', {
+        name: recipeDetails?.name,
+        id: recipeDetails?.recipeId || recipeDetails?.id,
+        hasIngredients: !!recipeDetails?.ingredients,
+        ingredientsCount: recipeDetails?.ingredients?.length || 0,
+        servings: recipeDetails?.servings
+      });
 
       if (!recipeDetails || !recipeDetails.ingredients || recipeDetails.servings === undefined || recipeDetails.servings === 0) {
-        console.warn(`Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);
+        console.warn(`[ShoppingList] Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);
+        console.warn(`[ShoppingList] Recipe details:`, { 
+          hasRecipe: !!recipeDetails, 
+          hasIngredients: !!recipeDetails?.ingredients, 
+          ingredientsLength: recipeDetails?.ingredients?.length || 0,
+          servings: recipeDetails?.servings 
+        });
         continue;
       }
 
       const scaleFactor = entry.plannedServings / recipeDetails.servings;
+      console.log(`[ShoppingList] Processing recipe ${recipeDetails.name}: ${entry.plannedServings} servings (scale ${scaleFactor}x from ${recipeDetails.servings})`);
+      console.log(`[ShoppingList] Recipe ingredients list:`, recipeDetails.ingredients.map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`));
 
-      recipeDetails.ingredients.forEach(ing => {
+      recipeDetails.ingredients.forEach((ing, index) => {
         if (!ing.name || ing.quantity === undefined || ing.unit === undefined) {
-          console.warn(`Skipping ingredient in recipe ${recipeDetails.recipeId} due to missing fields.`);
+          console.warn(`[ShoppingList] Skipping ingredient ${index} in recipe ${recipeDetails.name} due to missing fields:`, ing);
           return;
         }
         const scaledQuantityStr = parseAndScaleQuantity(ing.quantity, scaleFactor);
         const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`;
+        
+        console.log(`[ShoppingList] Processing ingredient: ${ing.quantity} ${ing.unit} ${ing.name} → ${scaledQuantityStr} ${ing.unit} ${ing.name}`);
 
         if (aggregatedIngredients[key]) {
           // Basic aggregation: sum quantities if possible, otherwise concatenate
@@ -226,6 +260,9 @@ router.post('/generate', authMiddleware, async (req, res) => {
       }
       shoppingListCategorized[category].push(ing);
     });
+
+    console.log('[ShoppingList] Final aggregated ingredients count:', Object.keys(aggregatedIngredients).length);
+    console.log('[ShoppingList] Final categorized shopping list:', shoppingListCategorized);
 
     res.json(shoppingListCategorized);
 

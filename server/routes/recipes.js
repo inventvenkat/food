@@ -234,6 +234,19 @@ router.post('/upload-extract', authMiddleware, recipeUploadParser.single('recipe
   }
 });
 
+// @route   GET /api/recipes/ai-config
+// @desc    Check AI configuration (debug endpoint)
+// @access  Private
+router.get('/ai-config', authMiddleware, async (req, res) => {
+  const aiParser = new AIRecipeParser();
+  res.json({
+    provider: process.env.AI_PROVIDER || 'not set',
+    hasXaiKey: !!process.env.XAI_API_KEY,
+    xaiKeyPrefix: process.env.XAI_API_KEY ? process.env.XAI_API_KEY.substring(0, 8) + '...' : 'not set',
+    model: process.env.XAI_MODEL || 'not set'
+  });
+});
+
 // @route   POST /api/recipes/parse-with-ai
 // @desc    Parse recipe text using local AI model (Ollama)
 // @access  Private

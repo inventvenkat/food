@@ -16,7 +16,9 @@ async function batchGetRecipes(recipeIds) {
   }
 
   const client = getDynamoClient();
-  const tableName = process.env.DYNAMODB_TABLE_NAME || 'recipe-app-all-resources';
+  const tableName = process.env.RECIPES_TABLE_NAME || 'RecipeAppRecipes';
+  console.log('[BatchLoader DEBUG] Using table name:', tableName);
+  console.log('[BatchLoader DEBUG] Looking up recipe IDs:', recipeIds);
   
   // DynamoDB batch get has a limit of 100 items per request
   const maxBatchSize = 100;
@@ -30,9 +32,11 @@ async function batchGetRecipes(recipeIds) {
     requestItems[tableName] = {
       Keys: batch.map(recipeId => ({
         PK: { S: `RECIPE#${recipeId}` },
-        SK: { S: `RECIPE#${recipeId}` }
+        SK: { S: `METADATA#${recipeId}` }
       }))
     };
+    
+    console.log('[BatchLoader DEBUG] Batch request keys:', requestItems[tableName].Keys);
 
     try {
       const command = {
@@ -41,12 +45,20 @@ async function batchGetRecipes(recipeIds) {
 
       const response = await client.batchGetItem(command);
       
+      console.log('[BatchLoader DEBUG] Response keys:', Object.keys(response));
+      console.log('[BatchLoader DEBUG] Response.Responses:', !!response.Responses);
+      console.log('[BatchLoader DEBUG] Response.Responses[tableName]:', response.Responses?.[tableName]?.length || 0);
+      
       // Process the response and convert DynamoDB format to plain objects
       if (response.Responses && response.Responses[tableName]) {
-        const batchResults = response.Responses[tableName].map(item => 
-          convertDynamoItemToPlainObject(item)
-        );
+        const batchResults = response.Responses[tableName].map(item => {
+          const converted = convertDynamoItemToPlainObject(item);
+          console.log('[BatchLoader DEBUG] Converted item:', { id: converted.id, name: converted.name });
+          return converted;
+        });
         results.push(...batchResults);
+      } else {
+        console.log('[BatchLoader DEBUG] No results in response for table:', tableName);
       }
 
       // Handle unprocessed keys (retry logic could be added here if needed)
@@ -64,8 +76,12 @@ async function batchGetRecipes(recipeIds) {
   // Create a map for quick lookup and maintain order
   const recipeMap = new Map();
   results.forEach(recipe => {
-    if (recipe && recipe.id) {
-      recipeMap.set(recipe.id, recipe);
+    if (recipe) {
+      // Use both 'id' and 'recipeId' fields for compatibility
+      const recipeKey = recipe.id || recipe.recipeId;
+      if (recipeKey) {
+        recipeMap.set(recipeKey, recipe);
+      }
     }
   });
 
@@ -226,7 +242,12 @@ function convertDynamoItemToPlainObject(dynamoItem) {
   
   // Convert back to application format
   if (item.PK && item.PK.startsWith('RECIPE#')) {
-    item.id = item.PK.substring(7);
+    const recipeIdFromPK = item.PK.substring(7);
+    item.id = recipeIdFromPK;
+    // Ensure both id and recipeId are available for compatibility
+    if (!item.recipeId) {
+      item.recipeId = recipeIdFromPK;
+    }
     item.type = 'recipe';
   } else if (item.PK && item.PK.startsWith('COLLECTION#')) {
     item.id = item.PK.substring(11);

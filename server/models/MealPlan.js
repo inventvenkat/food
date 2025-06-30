@@ -14,6 +14,11 @@ const MEAL_PLANS_TABLE_NAME = process.env.MEAL_PLANS_TABLE_NAME || 'RecipeAppMea
 
 // Helper to format date to YYYY-MM-DD string
 const formatDateToYYYYMMDD = (date) => {
+  // If date is already a YYYY-MM-DD string, return it as-is
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
   const d = new Date(date);
   const year = d.getFullYear();
   const month = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -63,6 +68,8 @@ async function createMealPlanEntry({ userId, date, mealType, recipeId, plannedSe
 
 async function getMealPlanEntriesForUserAndDate(userId, date) {
   const formattedDate = formatDateToYYYYMMDD(date);
+  console.log('[MealPlan DEBUG] Getting meal plans for user:', userId, 'date:', formattedDate);
+  
   const params = {
     TableName: MEAL_PLANS_TABLE_NAME,
     KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk_prefix)",
@@ -74,29 +81,83 @@ async function getMealPlanEntriesForUserAndDate(userId, date) {
 
   try {
     const { Items } = await docClient.send(new QueryCommand(params));
+    console.log('[MealPlan DEBUG] Found meal plan items:', Items.length);
     
     // Extract unique recipe IDs
     const recipeIds = Items
       .filter(item => item.recipeId && item.recipeId.startsWith('RECIPE#'))
       .map(item => item.recipeId.substring(7));
     
-    // Batch load all recipes at once
-    const recipes = recipeIds.length > 0 ? await batchGetRecipes(recipeIds) : [];
+    console.log('[MealPlan DEBUG] Extracted recipe IDs:', recipeIds);
+    
+    // Try batch loading first, fallback to individual calls if needed
+    let recipes = [];
     const recipeMap = new Map();
-    recipes.forEach((recipe, index) => {
-      if (recipe) {
-        recipeMap.set(recipeIds[index], recipe);
+    
+    if (recipeIds.length > 0) {
+      try {
+        recipes = await batchGetRecipes(recipeIds);
+        console.log('[MealPlan DEBUG] Batch loaded recipes count:', recipes.length);
+        
+        // Check if batch loading worked
+        const successfullyLoaded = recipes.filter(r => r !== null).length;
+        console.log('[MealPlan DEBUG] Successfully batch loaded:', successfullyLoaded, 'out of', recipeIds.length);
+        
+        if (successfullyLoaded === 0 && recipeIds.length > 0) {
+          console.log('[MealPlan DEBUG] Batch loading failed, falling back to individual calls');
+          // Fallback to individual recipe calls
+          for (const recipeId of recipeIds) {
+            try {
+              const recipe = await getRecipeById(recipeId);
+              if (recipe) {
+                recipeMap.set(recipeId, recipe);
+                console.log('[MealPlan DEBUG] Individual load success:', recipeId, '→', recipe.name);
+              } else {
+                console.log('[MealPlan DEBUG] Individual load failed:', recipeId);
+              }
+            } catch (err) {
+              console.log('[MealPlan DEBUG] Individual load error:', recipeId, err.message);
+            }
+          }
+        } else {
+          // Batch loading worked, populate the map
+          recipes.forEach((recipe, index) => {
+            if (recipe) {
+              console.log('[MealPlan DEBUG] Mapping recipe ID:', recipeIds[index], '→', recipe.name);
+              recipeMap.set(recipeIds[index], recipe);
+            } else {
+              console.log('[MealPlan DEBUG] Null recipe for ID:', recipeIds[index]);
+            }
+          });
+        }
+      } catch (err) {
+        console.log('[MealPlan DEBUG] Batch loading error, falling back to individual calls:', err.message);
+        // Fallback to individual recipe calls
+        for (const recipeId of recipeIds) {
+          try {
+            const recipe = await getRecipeById(recipeId);
+            if (recipe) {
+              recipeMap.set(recipeId, recipe);
+              console.log('[MealPlan DEBUG] Fallback load success:', recipeId, '→', recipe.name);
+            }
+          } catch (err) {
+            console.log('[MealPlan DEBUG] Fallback load error:', recipeId, err.message);
+          }
+        }
       }
-    });
+    }
     
     // Populate entries with recipe data
     const populatedEntries = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
       if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
         const plainRecipeId = entry.recipeId.substring(7);
-        entry.recipe = recipeMap.get(plainRecipeId) || null;
+        const foundRecipe = recipeMap.get(plainRecipeId);
+        entry.recipe = foundRecipe || null;
+        console.log('[MealPlan DEBUG] Entry recipe populated:', plainRecipeId, '→', foundRecipe?.name || 'NULL');
       } else {
         entry.recipe = null;
+        console.log('[MealPlan DEBUG] Entry has no valid recipeId:', entry.recipeId);
       }
       return entry;
     });
@@ -111,6 +172,8 @@ async function getMealPlanEntriesForUserAndDate(userId, date) {
 async function getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate, limit = 20, lastEvaluatedKey = null) {
   const formattedStartDate = formatDateToYYYYMMDD(startDate);
   const formattedEndDate = formatDateToYYYYMMDD(endDate);
+  
+  console.log('[MealPlan DEBUG] Date range query for user:', userId, 'from:', formattedStartDate, 'to:', formattedEndDate);
 
   const params = {
     TableName: MEAL_PLANS_TABLE_NAME,
@@ -127,31 +190,114 @@ async function getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate,
   try {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     
+    console.log('[MealPlan DEBUG] Date range - Raw Items found:', Items.length);
+    Items.forEach((item, index) => {
+      console.log(`[MealPlan DEBUG] Date range - Item ${index + 1}:`, {
+        mealPlanId: item.mealPlanId,
+        userId: item.userId,
+        date: item.date,
+        mealType: item.mealType,
+        recipeId: item.recipeId,
+        plannedServings: item.plannedServings,
+        PK: item.PK,
+        SK: item.SK
+      });
+    });
+    
     // Extract unique recipe IDs
     const recipeIds = Items
       .filter(item => item.recipeId && item.recipeId.startsWith('RECIPE#'))
       .map(item => item.recipeId.substring(7));
     
-    // Batch load all recipes at once
-    const recipes = recipeIds.length > 0 ? await batchGetRecipes(recipeIds) : [];
+    console.log('[MealPlan DEBUG] Date range - Extracted recipe IDs:', recipeIds);
+    
+    // Try batch loading first, fallback to individual calls if needed
+    let recipes = [];
     const recipeMap = new Map();
-    recipes.forEach((recipe, index) => {
-      if (recipe) {
-        recipeMap.set(recipeIds[index], recipe);
+    
+    if (recipeIds.length > 0) {
+      try {
+        recipes = await batchGetRecipes(recipeIds);
+        console.log('[MealPlan DEBUG] Date range - Batch loaded recipes count:', recipes.length);
+        
+        // Check if batch loading worked
+        const successfullyLoaded = recipes.filter(r => r !== null).length;
+        console.log('[MealPlan DEBUG] Date range - Successfully batch loaded:', successfullyLoaded, 'out of', recipeIds.length);
+        
+        if (successfullyLoaded === 0 && recipeIds.length > 0) {
+          console.log('[MealPlan DEBUG] Date range - Batch loading failed, falling back to individual calls');
+          // Fallback to individual recipe calls
+          for (const recipeId of recipeIds) {
+            try {
+              const recipe = await getRecipeById(recipeId);
+              if (recipe) {
+                recipeMap.set(recipeId, recipe);
+                console.log('[MealPlan DEBUG] Date range - Individual load success:', recipeId, '→', recipe.name);
+              } else {
+                console.log('[MealPlan DEBUG] Date range - Individual load failed:', recipeId);
+              }
+            } catch (err) {
+              console.log('[MealPlan DEBUG] Date range - Individual load error:', recipeId, err.message);
+            }
+          }
+        } else {
+          // Batch loading worked, populate the map
+          recipes.forEach((recipe, index) => {
+            if (recipe) {
+              console.log('[MealPlan DEBUG] Date range - Mapping recipe ID:', recipeIds[index], '→', recipe.name);
+              recipeMap.set(recipeIds[index], recipe);
+            } else {
+              console.log('[MealPlan DEBUG] Date range - Null recipe for ID:', recipeIds[index]);
+            }
+          });
+        }
+      } catch (err) {
+        console.log('[MealPlan DEBUG] Date range - Batch loading error, falling back to individual calls:', err.message);
+        // Fallback to individual recipe calls
+        for (const recipeId of recipeIds) {
+          try {
+            const recipe = await getRecipeById(recipeId);
+            if (recipe) {
+              recipeMap.set(recipeId, recipe);
+              console.log('[MealPlan DEBUG] Date range - Fallback load success:', recipeId, '→', recipe.name);
+            }
+          } catch (err) {
+            console.log('[MealPlan DEBUG] Date range - Fallback load error:', recipeId, err.message);
+          }
+        }
       }
-    });
+    }
     
     // Populate entries with recipe data
     const populatedEntries = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
       if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
         const plainRecipeId = entry.recipeId.substring(7);
-        entry.recipe = recipeMap.get(plainRecipeId) || null;
+        const foundRecipe = recipeMap.get(plainRecipeId);
+        entry.recipe = foundRecipe || null;
+        console.log('[MealPlan DEBUG] Date range - Entry recipe populated:', {
+          mealPlanId: entry.mealPlanId,
+          plainRecipeId,
+          recipeName: foundRecipe?.name || 'NULL',
+          recipeIsPublic: foundRecipe?.isPublic,
+          recipeAuthorId: foundRecipe?.authorId,
+          hasIngredients: !!foundRecipe?.ingredients,
+          ingredientsCount: foundRecipe?.ingredients?.length || 0
+        });
       } else {
         entry.recipe = null;
+        console.log('[MealPlan DEBUG] Date range - Entry has no valid recipeId:', entry.recipeId);
       }
       return entry;
     });
+    
+    console.log('[MealPlan DEBUG] Date range - Final populated entries count:', populatedEntries.length);
+    console.log('[MealPlan DEBUG] Date range - Entries with public recipes:', 
+      populatedEntries.filter(entry => entry.recipe?.isPublic === true).length);
+    console.log('[MealPlan DEBUG] Date range - Entries with private recipes:', 
+      populatedEntries.filter(entry => entry.recipe?.isPublic === false).length);
+    console.log('[MealPlan DEBUG] Date range - Entries with null recipes:', 
+      populatedEntries.filter(entry => entry.recipe === null).length);
     
     return { entries: populatedEntries, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {

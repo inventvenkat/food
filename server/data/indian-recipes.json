@@ -1,0 +1,441 @@
+[
+  {
+    "name": "Classic Masala Dosa",
+    "description": "Crispy South Indian crepe made from fermented rice and lentil batter, filled with spiced potato curry.",
+    "category": "South Indian",
+    "cookingTime": 45,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["breakfast", "south indian", "dosa", "vegetarian", "fermented", "crispy"],
+    "ingredients": [
+      "2 cups dosa batter",
+      "4 medium potatoes, boiled and cubed",
+      "1 large onion, sliced",
+      "2 green chilies, slit",
+      "1 tsp mustard seeds",
+      "1 tsp cumin seeds",
+      "10-12 curry leaves",
+      "1/2 tsp turmeric powder",
+      "Salt to taste",
+      "2 tbsp oil",
+      "Fresh coriander for garnish"
+    ],
+    "instructions": "1. Heat oil in a pan, add mustard seeds and cumin seeds. When they splutter, add curry leaves and green chilies.\n2. Add sliced onions and sauté until translucent.\n3. Add turmeric powder and boiled potatoes. Mix well and cook for 5 minutes.\n4. Season with salt and garnish with coriander. Set aside.\n5. Heat a non-stick pan or dosa tawa. Pour a ladle of batter and spread it thin in a circular motion.\n6. Drizzle oil around the edges and cook until golden and crispy.\n7. Place the potato filling in the center and fold the dosa.\n8. Serve hot with coconut chutney and sambar.",
+    "nutritionalInfo": {
+      "calories": 280,
+      "carbs": "45g",
+      "protein": "8g",
+      "fat": "8g"
+    }
+  },
+  {
+    "name": "Idli Sambar",
+    "description": "Soft and fluffy steamed rice cakes served with flavorful lentil curry, a staple South Indian breakfast.",
+    "category": "South Indian",
+    "cookingTime": 30,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["breakfast", "south indian", "idli", "sambar", "vegetarian", "healthy", "steamed"],
+    "ingredients": [
+      "2 cups idli batter",
+      "1 cup toor dal (pigeon pea lentils)",
+      "2 tomatoes, chopped",
+      "1 onion, chopped",
+      "2 green chilies",
+      "1 tsp sambar powder",
+      "1/2 tsp turmeric powder",
+      "1 tsp tamarind paste",
+      "Salt to taste",
+      "Curry leaves",
+      "2 tbsp oil"
+    ],
+    "instructions": "1. Steam idli batter in idli plates for 10-12 minutes until fluffy.\n2. Cook toor dal with turmeric until soft and mushy.\n3. Heat oil, add mustard seeds, curry leaves, and green chilies.\n4. Add onions and tomatoes, cook until soft.\n5. Add sambar powder, cooked dal, and tamarind paste.\n6. Simmer for 10 minutes, add salt to taste.\n7. Serve hot idlis with sambar and coconut chutney.",
+    "nutritionalInfo": {
+      "calories": 320,
+      "carbs": "55g",
+      "protein": "12g",
+      "fat": "6g"
+    }
+  },
+  {
+    "name": "Medu Vada",
+    "description": "Crispy donut-shaped fritters made from black gram dal, a popular South Indian snack.",
+    "category": "South Indian",
+    "cookingTime": 40,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["snack", "south indian", "vada", "vegetarian", "crispy", "fried"],
+    "ingredients": [
+      "1 cup urad dal (black gram)",
+      "2 green chilies, finely chopped",
+      "1 inch ginger, minced",
+      "10 curry leaves, chopped",
+      "1 tsp cumin seeds",
+      "Salt to taste",
+      "Oil for deep frying"
+    ],
+    "instructions": "1. Soak urad dal for 4 hours, then grind to a fluffy paste with minimal water.\n2. Add green chilies, ginger, curry leaves, cumin seeds, and salt.\n3. Mix well and beat for 2-3 minutes to make it fluffy.\n4. Heat oil for deep frying.\n5. Wet hands, take a portion of batter, make a hole in center and slide into oil.\n6. Fry until golden brown and crispy.\n7. Serve hot with sambar and coconut chutney.",
+    "nutritionalInfo": {
+      "calories": 180,
+      "carbs": "15g",
+      "protein": "8g",
+      "fat": "10g"
+    }
+  },
+  {
+    "name": "Coconut Rice (Thengai Sadam)",
+    "description": "Fragrant South Indian rice dish mixed with fresh coconut, curry leaves, and spices.",
+    "category": "South Indian",
+    "cookingTime": 25,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["lunch", "south indian", "rice", "coconut", "vegetarian", "mild"],
+    "ingredients": [
+      "2 cups cooked rice",
+      "1 cup fresh coconut, grated",
+      "2 tbsp coconut oil",
+      "1 tsp mustard seeds",
+      "1 tsp cumin seeds",
+      "2 dry red chilies",
+      "10 curry leaves",
+      "1/4 cup peanuts",
+      "1/4 cup cashews",
+      "Salt to taste"
+    ],
+    "instructions": "1. Heat coconut oil in a pan, add mustard seeds and cumin seeds.\n2. When they splutter, add red chilies, curry leaves, peanuts, and cashews.\n3. Fry until cashews turn golden.\n4. Add grated coconut and sauté for 2-3 minutes.\n5. Add cooked rice and salt, mix gently.\n6. Cook for 3-4 minutes until well combined.\n7. Serve warm with pickle or papad.",
+    "nutritionalInfo": {
+      "calories": 350,
+      "carbs": "40g",
+      "protein": "8g",
+      "fat": "18g"
+    }
+  },
+  {
+    "name": "Chettinad Chicken Curry",
+    "description": "Spicy and aromatic chicken curry from Tamil Nadu with a rich blend of roasted spices.",
+    "category": "South Indian",
+    "cookingTime": 60,
+    "servings": 4,
+    "difficulty": "Hard",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "south indian", "chicken", "spicy", "curry", "non-vegetarian"],
+    "ingredients": [
+      "500g chicken, cut into pieces",
+      "2 onions, sliced",
+      "4 tomatoes, chopped",
+      "2 tbsp chettinad masala powder",
+      "1 tbsp ginger-garlic paste",
+      "1 cup coconut milk",
+      "2 tbsp coconut oil",
+      "Curry leaves",
+      "Salt to taste"
+    ],
+    "instructions": "1. Heat coconut oil, sauté onions until golden.\n2. Add ginger-garlic paste and curry leaves.\n3. Add chicken pieces and cook until 70% done.\n4. Add tomatoes and cook until soft.\n5. Add chettinad masala powder and cook for 2 minutes.\n6. Pour coconut milk and simmer for 15 minutes.\n7. Season with salt and garnish with curry leaves.\n8. Serve with rice or appam.",
+    "nutritionalInfo": {
+      "calories": 420,
+      "carbs": "12g",
+      "protein": "35g",
+      "fat": "25g"
+    }
+  },
+  {
+    "name": "Butter Chicken (Murgh Makhani)",
+    "description": "Creamy and rich North Indian chicken curry in a tomato-based sauce with butter and cream.",
+    "category": "North Indian",
+    "cookingTime": 45,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["dinner", "north indian", "chicken", "creamy", "butter", "tomato", "non-vegetarian"],
+    "ingredients": [
+      "500g chicken, cut into pieces",
+      "4 tomatoes, chopped",
+      "1/2 cup heavy cream",
+      "3 tbsp butter",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp garam masala",
+      "1 tsp red chili powder",
+      "1/2 tsp turmeric",
+      "Salt to taste",
+      "Fresh coriander for garnish"
+    ],
+    "instructions": "1. Marinate chicken with ginger-garlic paste, red chili powder, turmeric, and salt.\n2. Cook chicken in a pan until done, set aside.\n3. In the same pan, add butter and chopped tomatoes.\n4. Cook until tomatoes break down and form a thick sauce.\n5. Add cooked chicken and garam masala.\n6. Pour in heavy cream and simmer for 5 minutes.\n7. Garnish with fresh coriander.\n8. Serve hot with naan or basmati rice.",
+    "nutritionalInfo": {
+      "calories": 480,
+      "carbs": "8g",
+      "protein": "38g",
+      "fat": "32g"
+    }
+  },
+  {
+    "name": "Dal Makhani",
+    "description": "Rich and creamy North Indian black lentil curry slow-cooked with butter and cream.",
+    "category": "North Indian",
+    "cookingTime": 90,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "north indian", "dal", "vegetarian", "creamy", "rich"],
+    "ingredients": [
+      "1 cup black urad dal",
+      "1/4 cup rajma (kidney beans)",
+      "3 tomatoes, pureed",
+      "1/4 cup heavy cream",
+      "3 tbsp butter",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp cumin seeds",
+      "1 tsp garam masala",
+      "1/2 tsp red chili powder",
+      "Salt to taste"
+    ],
+    "instructions": "1. Soak urad dal and rajma overnight, then pressure cook until soft.\n2. Heat butter in a heavy-bottomed pan, add cumin seeds.\n3. Add ginger-garlic paste and sauté for a minute.\n4. Add tomato puree and cook until oil separates.\n5. Add cooked dal and beans, simmer for 45 minutes.\n6. Add garam masala, red chili powder, and salt.\n7. Stir in heavy cream and simmer for 10 more minutes.\n8. Serve hot with naan or rice.",
+    "nutritionalInfo": {
+      "calories": 380,
+      "carbs": "35g",
+      "protein": "18g",
+      "fat": "20g"
+    }
+  },
+  {
+    "name": "Chole Bhature",
+    "description": "Spicy chickpea curry served with fluffy fried bread, a popular North Indian street food.",
+    "category": "North Indian",
+    "cookingTime": 60,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["lunch", "north indian", "chickpeas", "bread", "street food", "vegetarian"],
+    "ingredients": [
+      "2 cups chickpeas, soaked overnight",
+      "2 cups all-purpose flour",
+      "2 onions, chopped",
+      "3 tomatoes, chopped",
+      "2 tbsp chole masala",
+      "1 tbsp ginger-garlic paste",
+      "1/2 cup yogurt",
+      "1 tsp baking powder",
+      "Oil for frying",
+      "Salt to taste"
+    ],
+    "instructions": "1. Pressure cook soaked chickpeas until soft.\n2. For bhature: Mix flour, yogurt, baking powder, and salt. Knead into soft dough.\n3. Heat oil, sauté onions until golden.\n4. Add ginger-garlic paste and tomatoes.\n5. Add chole masala and cooked chickpeas.\n6. Simmer for 20 minutes until thick.\n7. Roll bhature and deep fry until puffed.\n8. Serve hot chole with fresh bhature.",
+    "nutritionalInfo": {
+      "calories": 520,
+      "carbs": "65g",
+      "protein": "18g",
+      "fat": "22g"
+    }
+  },
+  {
+    "name": "Aloo Gobi",
+    "description": "Classic North Indian dry curry with potatoes and cauliflower spiced with turmeric and cumin.",
+    "category": "North Indian",
+    "cookingTime": 35,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "north indian", "potato", "cauliflower", "vegetarian", "dry curry"],
+    "ingredients": [
+      "3 medium potatoes, cubed",
+      "1 medium cauliflower, cut into florets",
+      "2 onions, sliced",
+      "2 tomatoes, chopped",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp cumin seeds",
+      "1 tsp turmeric powder",
+      "1 tsp coriander powder",
+      "1/2 tsp garam masala",
+      "2 tbsp oil",
+      "Salt to taste",
+      "Fresh coriander for garnish"
+    ],
+    "instructions": "1. Heat oil in a pan, add cumin seeds.\n2. Add onions and sauté until golden.\n3. Add ginger-garlic paste and tomatoes.\n4. Add turmeric, coriander powder, and cook for 2 minutes.\n5. Add potatoes and cauliflower, mix well.\n6. Cover and cook for 15-20 minutes until vegetables are tender.\n7. Sprinkle garam masala and garnish with coriander.\n8. Serve hot with roti or rice.",
+    "nutritionalInfo": {
+      "calories": 180,
+      "carbs": "28g",
+      "protein": "5g",
+      "fat": "7g"
+    }
+  },
+  {
+    "name": "Paneer Butter Masala",
+    "description": "Creamy North Indian curry with soft paneer cubes in a rich tomato and butter sauce.",
+    "category": "North Indian",
+    "cookingTime": 30,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "north indian", "paneer", "vegetarian", "creamy", "tomato"],
+    "ingredients": [
+      "300g paneer, cubed",
+      "4 tomatoes, pureed",
+      "1/2 cup heavy cream",
+      "3 tbsp butter",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp garam masala",
+      "1/2 tsp red chili powder",
+      "1 tsp sugar",
+      "Salt to taste",
+      "Fresh coriander for garnish"
+    ],
+    "instructions": "1. Heat butter in a pan, lightly fry paneer cubes and set aside.\n2. In the same pan, add ginger-garlic paste.\n3. Add tomato puree and cook until oil separates.\n4. Add red chili powder, garam masala, sugar, and salt.\n5. Add fried paneer cubes and mix gently.\n6. Pour in heavy cream and simmer for 5 minutes.\n7. Garnish with fresh coriander.\n8. Serve hot with naan or rice.",
+    "nutritionalInfo": {
+      "calories": 420,
+      "carbs": "12g",
+      "protein": "20g",
+      "fat": "32g"
+    }
+  },
+  {
+    "name": "Biryani Hyderabadi",
+    "description": "Aromatic and flavorful rice dish with layers of spiced meat and fragrant basmati rice.",
+    "category": "South Indian",
+    "cookingTime": 120,
+    "servings": 6,
+    "difficulty": "Hard",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "biryani", "rice", "mutton", "aromatic", "special occasion"],
+    "ingredients": [
+      "500g mutton, cut into pieces",
+      "3 cups basmati rice",
+      "2 cups yogurt",
+      "2 onions, thinly sliced and fried",
+      "1/4 cup mint leaves",
+      "1/4 cup coriander leaves",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp red chili powder",
+      "1/2 tsp turmeric",
+      "Whole spices (bay leaves, cardamom, cinnamon)",
+      "Saffron soaked in warm milk",
+      "Ghee",
+      "Salt to taste"
+    ],
+    "instructions": "1. Marinate mutton with yogurt, ginger-garlic paste, red chili powder, turmeric, and salt for 2 hours.\n2. Cook marinated mutton until 70% done.\n3. Boil rice with whole spices until 70% cooked, drain.\n4. Layer cooked mutton in a heavy-bottomed pot.\n5. Top with rice, fried onions, mint, coriander, and saffron milk.\n6. Cover with aluminum foil, then lid, and cook on high heat for 3 minutes.\n7. Reduce heat and cook for 45 minutes.\n8. Let it rest for 10 minutes before serving.\n9. Serve with raita and shorba.",
+    "nutritionalInfo": {
+      "calories": 650,
+      "carbs": "55g",
+      "protein": "35g",
+      "fat": "30g"
+    }
+  },
+  {
+    "name": "Rajma Chawal",
+    "description": "Comfort food from North India - kidney bean curry served with steamed rice.",
+    "category": "North Indian",
+    "cookingTime": 60,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["lunch", "dinner", "north indian", "kidney beans", "rice", "vegetarian", "comfort food"],
+    "ingredients": [
+      "2 cups rajma (kidney beans), soaked overnight",
+      "2 cups basmati rice",
+      "2 onions, chopped",
+      "3 tomatoes, chopped",
+      "1 tbsp ginger-garlic paste",
+      "1 tsp cumin seeds",
+      "1 tsp garam masala",
+      "1 tsp red chili powder",
+      "1/2 tsp turmeric",
+      "2 tbsp oil",
+      "Salt to taste"
+    ],
+    "instructions": "1. Pressure cook soaked rajma until soft and mushy.\n2. Cook basmati rice separately and keep warm.\n3. Heat oil, add cumin seeds.\n4. Add onions and cook until golden.\n5. Add ginger-garlic paste and tomatoes.\n6. Cook until tomatoes break down.\n7. Add spices and cooked rajma with its liquid.\n8. Simmer for 20 minutes until thick.\n9. Serve hot rajma over steamed rice.",
+    "nutritionalInfo": {
+      "calories": 450,
+      "carbs": "70g",
+      "protein": "18g",
+      "fat": "8g"
+    }
+  },
+  {
+    "name": "Masala Chai",
+    "description": "Traditional Indian spiced tea with a perfect blend of aromatic spices, milk, and tea leaves.",
+    "category": "Beverages",
+    "cookingTime": 15,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["beverage", "tea", "spices", "indian", "warm", "comforting"],
+    "ingredients": [
+      "2 cups water",
+      "1 cup milk",
+      "2 tbsp black tea leaves",
+      "4-5 green cardamom pods, crushed",
+      "1 inch cinnamon stick",
+      "4-5 cloves",
+      "1 inch fresh ginger, sliced",
+      "Sugar to taste"
+    ],
+    "instructions": "1. Boil water with all whole spices and ginger.\n2. Add tea leaves and boil for 2 minutes.\n3. Add milk and bring to a boil.\n4. Simmer for 3-4 minutes until the tea becomes aromatic.\n5. Add sugar to taste.\n6. Strain and serve hot in small cups.\n7. Enjoy with biscuits or snacks.",
+    "nutritionalInfo": {
+      "calories": 80,
+      "carbs": "12g",
+      "protein": "3g",
+      "fat": "2g"
+    }
+  },
+  {
+    "name": "Poha (Flattened Rice)",
+    "description": "Light and nutritious Maharashtra breakfast dish made with flattened rice, vegetables, and spices.",
+    "category": "North Indian",
+    "cookingTime": 20,
+    "servings": 4,
+    "difficulty": "Easy",
+    "isPublic": true,
+    "tags": ["breakfast", "snack", "north indian", "poha", "vegetarian", "light", "healthy"],
+    "ingredients": [
+      "2 cups thick poha (flattened rice)",
+      "1 large onion, chopped",
+      "2 green chilies, chopped",
+      "1/2 cup peanuts",
+      "10 curry leaves",
+      "1 tsp mustard seeds",
+      "1/2 tsp turmeric powder",
+      "1 tsp sugar",
+      "2 tbsp oil",
+      "Salt to taste",
+      "Fresh coriander and lemon juice for garnish"
+    ],
+    "instructions": "1. Rinse poha gently and drain, sprinkle turmeric and salt.\n2. Heat oil, add mustard seeds and peanuts.\n3. When mustard seeds splutter, add curry leaves and green chilies.\n4. Add onions and sauté until translucent.\n5. Add the seasoned poha and sugar.\n6. Mix gently and cook for 3-4 minutes.\n7. Garnish with coriander and serve with lemon juice.\n8. Enjoy hot as breakfast or evening snack.",
+    "nutritionalInfo": {
+      "calories": 220,
+      "carbs": "35g",
+      "protein": "6g",
+      "fat": "8g"
+    }
+  },
+  {
+    "name": "Tandoori Chicken",
+    "description": "Smoky and flavorful North Indian chicken marinated in yogurt and spices, traditionally cooked in a tandoor.",
+    "category": "North Indian",
+    "cookingTime": 90,
+    "servings": 4,
+    "difficulty": "Medium",
+    "isPublic": true,
+    "tags": ["dinner", "north indian", "chicken", "tandoori", "grilled", "smoky", "non-vegetarian"],
+    "ingredients": [
+      "1 whole chicken, cut into pieces",
+      "1 cup yogurt",
+      "2 tbsp ginger-garlic paste",
+      "1 tbsp red chili powder",
+      "1 tsp turmeric powder",
+      "1 tbsp garam masala",
+      "1 tbsp tandoori masala",
+      "2 tbsp lemon juice",
+      "2 tbsp oil",
+      "Salt to taste",
+      "Onion slices and mint for garnish"
+    ],
+    "instructions": "1. Make deep cuts in chicken pieces and wash thoroughly.\n2. Mix yogurt, ginger-garlic paste, all spices, lemon juice, oil, and salt.\n3. Marinate chicken in this mixture for at least 4 hours or overnight.\n4. Preheat oven to 200°C or prepare grill.\n5. Cook chicken for 25-30 minutes, turning once.\n6. Baste with oil or butter halfway through.\n7. Cook until chicken is charred and cooked through.\n8. Garnish with onion slices and mint.\n9. Serve hot with naan and mint chutney.",
+    "nutritionalInfo": {
+      "calories": 380,
+      "carbs": "5g",
+      "protein": "45g",
+      "fat": "18g"
+    }
+  }
+]

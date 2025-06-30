@@ -76,7 +76,9 @@ async function createRecipe({ recipeData, authorId, authorUsername }) {
 }
 
 async function getRecipeById(recipeId) {
+  console.log('[Recipe Model] Getting recipe by ID:', recipeId);
   return RecipeCacheManager.getRecipe(recipeId, async () => {
+    console.log('[Recipe Model] Cache miss, fetching from DB for ID:', recipeId);
     const params = {
       TableName: RECIPES_TABLE_NAME,
       Key: {
@@ -89,9 +91,18 @@ async function getRecipeById(recipeId) {
       const { Item } = await docClient.send(new GetCommand(params));
       if (Item) {
         const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = Item;
+        console.log('[Recipe Model] Found recipe:', { 
+          id: recipe.recipeId, 
+          name: recipe.name, 
+          isPublic: recipe.isPublic,
+          authorId: recipe.authorId,
+          ingredientsCount: recipe.ingredients?.length || 0
+        });
         return recipe;
+      } else {
+        console.log('[Recipe Model] Recipe not found in DB for ID:', recipeId);
+        return null;
       }
-      return null;
     } catch (error) {
       console.error("Error getting recipe by ID:", error);
       throw new Error('Could not retrieve recipe.');

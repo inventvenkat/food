@@ -1,11 +1,41 @@
 const axios = require('axios');
+const { OpenAI } = require('openai');
+const Anthropic = require('@anthropic-ai/sdk');
 const aiCache = require('./aiCache');
 
 class AIRecipeParser {
-  constructor(ollamaEndpoint = process.env.OLLAMA_ENDPOINT || 'http://localhost:11434') {
-    this.ollamaEndpoint = ollamaEndpoint;
-    this.defaultModel = process.env.OLLAMA_MODEL || 'llama3.2:3b';
-    this.timeout = parseInt(process.env.AI_TIMEOUT) || 30000; // 30 seconds
+  constructor() {
+    // AI Service Configuration - optimized for cheapest/fastest
+    this.aiProvider = process.env.AI_PROVIDER || 'groq'; // 'groq', 'anthropic', 'openai', 'together', 'ollama'
+    this.timeout = parseInt(process.env.AI_TIMEOUT) || 15000; // Reduced timeout for speed
+    
+    // OpenAI Configuration  
+    this.openaiClient = process.env.OPENAI_API_KEY ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    }) : null;
+    this.openaiModel = process.env.OPENAI_MODEL || 'gpt-3.5-turbo'; // Cheapest OpenAI model
+    
+    // Anthropic Configuration (Often cheapest for structured tasks)
+    this.anthropicClient = process.env.ANTHROPIC_API_KEY ? new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    }) : null;
+    this.anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-3-haiku-20240307'; // Cheapest Claude model
+    
+    // Groq Configuration (Fastest inference)
+    this.groqApiKey = process.env.GROQ_API_KEY;
+    this.groqModel = process.env.GROQ_MODEL || 'llama3-8b-8192';
+    
+    // xAI Configuration (Grok models)
+    this.xaiApiKey = process.env.XAI_API_KEY || process.env.GROQ_API_KEY; // Allow using GROQ_API_KEY for xAI
+    this.xaiModel = process.env.XAI_MODEL || 'grok-2-latest'; // Fast quantized model
+    
+    // Together AI Configuration (Cheap alternative)
+    this.togetherApiKey = process.env.TOGETHER_API_KEY;
+    this.togetherModel = process.env.TOGETHER_MODEL || 'meta-llama/Llama-2-7b-chat-hf';
+    
+    // Ollama Configuration (Local fallback)
+    this.ollamaEndpoint = process.env.OLLAMA_ENDPOINT || 'http://localhost:11434';
+    this.ollamaModel = process.env.OLLAMA_MODEL || 'llama3.2:1b'; // Smallest model for speed
   }
 
   /**
@@ -25,7 +55,17 @@ class AIRecipeParser {
       instructions: "string | null"
     };
 
-    return `Please parse the following recipe text and reformat it into the JSON structure specified below. Ensure all fields are populated as accurately as possible. If a field cannot be determined, use an empty string "" or null for that field, or an empty array [] for ingredients and tags.
+    return `You are a recipe parsing expert. Extract ALL the following information from the recipe text and return it as a valid JSON object. 
+
+IMPORTANT: You MUST extract these fields if they exist in the text:
+- title: Recipe name/title
+- description: Brief description of the dish
+- cookingTime: Total cooking/prep time (e.g., "30 minutes", "1 hour")
+- servings: Number of people served (e.g., "4", "6 servings")
+- category: Type of dish (e.g., "Main Course", "Dessert", "Appetizer")
+- tags: Keywords/descriptors (e.g., ["vegetarian", "quick", "healthy"])
+- ingredients: List with quantity, unit, and name
+- instructions: Step-by-step cooking instructions
 
 JSON Structure to use:
 ${JSON.stringify(jsonStructure, null, 2)}
@@ -33,7 +73,7 @@ ${JSON.stringify(jsonStructure, null, 2)}
 Recipe Text:
 ${recipeText}
 
-Your response must be a single, valid JSON object with no additional text or formatting:`;
+Extract as much information as possible. If a field is not found in the text, use null for strings, [] for arrays. Return ONLY the JSON object, no other text:`;
   }
 
   /**
@@ -52,7 +92,7 @@ Your response must be a single, valid JSON object with no additional text or for
   }
 
   /**
-   * Parse recipe text using Ollama local model with caching
+   * Parse recipe text using configured AI provider with fallback chain
    */
   async parseRecipeWithAI(recipeText) {
     if (!recipeText || typeof recipeText !== 'string' || recipeText.trim().length === 0) {
@@ -66,21 +106,270 @@ Your response must be a single, valid JSON object with no additional text or for
       return cachedResult;
     }
 
-    // Check if Ollama is available
+    const errors = [];
+
+    // Try primary AI provider first
+    try {
+      const result = await this.callAIProvider(recipeText);
+      // Cache successful result
+      aiCache.set(recipeText, result);
+      return result;
+    } catch (error) {
+      console.error(`Primary AI provider (${this.aiProvider}) failed:`, error.message);
+      errors.push(`${this.aiProvider}: ${error.message}`);
+    }
+
+    // Fallback to Ollama if primary fails and it's not already Ollama
+    if (this.aiProvider !== 'ollama') {
+      try {
+        const result = await this.parseWithOllama(recipeText);
+        aiCache.set(recipeText, result);
+        return result;
+      } catch (error) {
+        console.error('Ollama fallback failed:', error.message);
+        errors.push(`ollama: ${error.message}`);
+      }
+    }
+
+    // If all AI methods fail, throw error with details
+    throw new Error(`All AI providers failed: ${errors.join('; ')}`);
+  }
+
+  /**
+   * Call the configured AI provider
+   */
+  async callAIProvider(recipeText) {
+    switch (this.aiProvider) {
+      case 'xai':
+      case 'groq': // Handle both since key might be xAI
+        return await this.parseWithXAI(recipeText);
+      case 'anthropic':
+        return await this.parseWithAnthropic(recipeText);
+      case 'openai':
+        return await this.parseWithOpenAI(recipeText);
+      case 'together':
+        return await this.parseWithTogether(recipeText);
+      case 'ollama':
+        return await this.parseWithOllama(recipeText);
+      default:
+        throw new Error(`Unsupported AI provider: ${this.aiProvider}`);
+    }
+  }
+
+  /**
+   * Parse recipe using OpenAI API
+   */
+  async parseWithOpenAI(recipeText) {
+    if (!this.openaiClient) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const prompt = this.generateRecipeParsingPrompt(recipeText);
+
+    try {
+      const completion = await this.openaiClient.chat.completions.create({
+        model: this.openaiModel,
+        messages: [
+          {
+            role: "system",
+            content: "You are a recipe parsing assistant. Parse recipes into JSON format exactly as requested. Return only valid JSON, no additional text."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 2048,
+      });
+
+      const aiOutput = completion.choices[0]?.message?.content?.trim();
+      if (!aiOutput) {
+        throw new Error('Empty response from OpenAI');
+      }
+
+      return this.parseAndValidateAIResponse(aiOutput);
+
+    } catch (error) {
+      if (error.code === 'insufficient_quota') {
+        throw new Error('OpenAI API quota exceeded. Please check your billing.');
+      } else if (error.code === 'invalid_api_key') {
+        throw new Error('Invalid OpenAI API key.');
+      } else if (error.status === 429) {
+        throw new Error('OpenAI rate limit exceeded. Please try again later.');
+      } else {
+        throw new Error(`OpenAI API error: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Parse recipe using Anthropic API (Claude 3 Haiku - cheapest Claude model)
+   */
+  async parseWithAnthropic(recipeText) {
+    if (!this.anthropicClient) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    const prompt = this.generateRecipeParsingPrompt(recipeText);
+
+    try {
+      const message = await this.anthropicClient.messages.create({
+        model: this.anthropicModel,
+        max_tokens: 1024, // Reduced for cost savings
+        temperature: 0.1,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const aiOutput = message.content[0]?.text?.trim();
+      if (!aiOutput) {
+        throw new Error('Empty response from Anthropic');
+      }
+
+      return this.parseAndValidateAIResponse(aiOutput);
+
+    } catch (error) {
+      if (error.status === 401) {
+        throw new Error('Invalid Anthropic API key.');
+      } else if (error.status === 429) {
+        throw new Error('Anthropic rate limit exceeded. Please try again later.');
+      } else {
+        throw new Error(`Anthropic API error: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Parse recipe using xAI/Grok API (Fast inference)
+   */
+  async parseWithXAI(recipeText) {
+    if (!this.xaiApiKey) {
+      throw new Error('xAI API key not configured');
+    }
+
+    const prompt = this.generateRecipeParsingPrompt(recipeText);
+
+    try {
+      const response = await axios.post('https://api.x.ai/v1/chat/completions', {
+        model: this.xaiModel,
+        messages: [
+          {
+            role: "system",
+            content: "You are a recipe parsing assistant. Parse recipes into JSON format exactly as requested. Return only valid JSON, no additional text."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1024,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${this.xaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: this.timeout
+      });
+
+      const aiOutput = response.data.choices[0]?.message?.content?.trim();
+      if (!aiOutput) {
+        throw new Error('Empty response from xAI');
+      }
+
+      // console.log('xAI raw response:', aiOutput); // DEBUG
+      return this.parseAndValidateAIResponse(aiOutput);
+
+    } catch (error) {
+      if (error.response?.status === 401) {
+        throw new Error('Invalid xAI API key.');
+      } else if (error.response?.status === 429) {
+        throw new Error('xAI rate limit exceeded. Please try again later.');
+      } else if (error.response) {
+        console.error('xAI API error response:', error.response.data); // DEBUG
+        throw new Error(`xAI API error: ${error.response.data.error?.message || 'Unknown error'}`);
+      } else {
+        throw new Error(`xAI API error: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Parse recipe using Together AI (Cheap open source models)
+   */
+  async parseWithTogether(recipeText) {
+    if (!this.togetherApiKey) {
+      throw new Error('Together AI API key not configured');
+    }
+
+    const prompt = this.generateRecipeParsingPrompt(recipeText);
+
+    try {
+      const response = await axios.post('https://api.together.xyz/v1/chat/completions', {
+        model: this.togetherModel,
+        messages: [
+          {
+            role: "system",
+            content: "You are a recipe parsing assistant. Parse recipes into JSON format exactly as requested. Return only valid JSON, no additional text."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1024,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${this.togetherApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: this.timeout
+      });
+
+      const aiOutput = response.data.choices[0]?.message?.content?.trim();
+      if (!aiOutput) {
+        throw new Error('Empty response from Together AI');
+      }
+
+      return this.parseAndValidateAIResponse(aiOutput);
+
+    } catch (error) {
+      if (error.response?.status === 401) {
+        throw new Error('Invalid Together AI API key.');
+      } else if (error.response?.status === 429) {
+        throw new Error('Together AI rate limit exceeded. Please try again later.');
+      } else if (error.response) {
+        throw new Error(`Together AI error: ${error.response.data.error?.message || 'Unknown error'}`);
+      } else {
+        throw new Error(`Together AI error: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Parse recipe using Ollama (local model)
+   */
+  async parseWithOllama(recipeText) {
     const isAvailable = await this.checkOllamaAvailability();
     if (!isAvailable) {
-      throw new Error('AI service (Ollama) is not available. Please ensure Ollama is running.');
+      throw new Error('Ollama service not available');
     }
 
     const prompt = this.generateRecipeParsingPrompt(recipeText);
 
     try {
       const response = await axios.post(`${this.ollamaEndpoint}/api/generate`, {
-        model: this.defaultModel,
+        model: this.ollamaModel,
         prompt: prompt,
         stream: false,
         options: {
-          temperature: 0.1, // Low temperature for consistent structured output
+          temperature: 0.1,
           top_p: 0.9,
           max_tokens: 2048
         }
@@ -91,46 +380,45 @@ Your response must be a single, valid JSON object with no additional text or for
         }
       });
 
-      if (!response.data || !response.data.response) {
-        throw new Error('Invalid response from AI model');
+      const aiOutput = response.data.response?.trim();
+      if (!aiOutput) {
+        throw new Error('Empty response from Ollama');
       }
 
-      // Clean and parse the AI response
-      let aiOutput = response.data.response.trim();
-      
-      // Remove any potential markdown code blocks
-      aiOutput = aiOutput.replace(/^```json\s*|\s*```$/g, '');
-      
-      // Try to parse as JSON
-      let parsedData;
-      try {
-        parsedData = JSON.parse(aiOutput);
-      } catch (parseError) {
-        console.error('Failed to parse AI output as JSON:', parseError.message);
-        console.error('AI output was:', aiOutput);
-        throw new Error('AI returned invalid JSON format');
-      }
-
-      // Validate the parsed data structure
-      const validatedData = this.validateAndSanitizeResponse(parsedData);
-      
-      // Cache the successful result
-      aiCache.set(recipeText, validatedData);
-      
-      return validatedData;
+      return this.parseAndValidateAIResponse(aiOutput);
 
     } catch (error) {
       if (error.code === 'ECONNABORTED') {
-        throw new Error('AI request timed out. Please try again.');
+        throw new Error('Ollama request timed out');
       } else if (error.response) {
-        console.error('Ollama API error:', error.response.data);
-        throw new Error(`AI service error: ${error.response.data.error || 'Unknown error'}`);
+        throw new Error(`Ollama error: ${error.response.data.error || 'Unknown error'}`);
       } else if (error.request) {
-        throw new Error('Failed to connect to AI service. Please ensure Ollama is running.');
+        throw new Error('Failed to connect to Ollama service');
       } else {
         throw error;
       }
     }
+  }
+
+  /**
+   * Parse and validate AI response from any provider
+   */
+  parseAndValidateAIResponse(aiOutput) {
+    // Remove any potential markdown code blocks
+    const cleanedOutput = aiOutput.replace(/^```json\s*|\s*```$/g, '').trim();
+    
+    // Try to parse as JSON
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanedOutput);
+    } catch (parseError) {
+      console.error('Failed to parse AI output as JSON:', parseError.message);
+      console.error('AI output was:', cleanedOutput);
+      throw new Error('AI returned invalid JSON format');
+    }
+
+    // Validate the parsed data structure
+    return this.validateAndSanitizeResponse(parsedData);
   }
 
   /**
@@ -140,6 +428,8 @@ Your response must be a single, valid JSON object with no additional text or for
     if (!data || typeof data !== 'object') {
       throw new Error('AI response is not a valid object');
     }
+
+    // console.log('Raw AI response data:', JSON.stringify(data, null, 2)); // DEBUG
 
     // Sanitize and validate each field
     const sanitized = {
@@ -153,6 +443,8 @@ Your response must be a single, valid JSON object with no additional text or for
       instructions: this.sanitizeString(data.instructions)
     };
 
+    // console.log('Sanitized response:', JSON.stringify(sanitized, null, 2)); // DEBUG
+
     return sanitized;
   }
 
@@ -163,7 +455,7 @@ Your response must be a single, valid JSON object with no additional text or for
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
-    return null;
+    return null; // Frontend handles null values correctly
   }
 
   /**

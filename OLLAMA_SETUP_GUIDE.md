@@ -1,6 +1,8 @@
 # Ollama Setup Guide for AI Recipe Parsing
 
-This guide will help you set up Ollama to enable AI-powered recipe parsing in the recipe management application.
+This guide will help you set up Ollama as a local AI service for recipe parsing. **Note**: The application now primarily supports online AI APIs (OpenAI, Anthropic) which are easier to set up. See `AI_API_SETUP_GUIDE.md` for online options.
+
+Ollama serves as a fallback when online APIs are unavailable or for users who prefer local processing.
 
 ## Prerequisites
 

@@ -13,10 +13,12 @@ const clientConfig = {
 if (DYNAMODB_ENDPOINT_OVERRIDE) {
   clientConfig.endpoint = DYNAMODB_ENDPOINT_OVERRIDE;
   clientConfig.credentials = {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "dummyKeyId", // Default to dummy if not set
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "dummySecretKey", // Default to dummy if not set
+    accessKeyId: "dummyKeyId", // Fixed dummy credentials for DynamoDB Local
+    secretAccessKey: "dummySecretKey", // Fixed dummy credentials for DynamoDB Local
   };
-  console.log(`DynamoDB client configured for local endpoint: ${DYNAMODB_ENDPOINT_OVERRIDE} in region ${REGION}`);
+  // Force the region for local development
+  clientConfig.region = "us-east-1";
+  console.log(`DynamoDB client configured for local endpoint: ${DYNAMODB_ENDPOINT_OVERRIDE} in region ${clientConfig.region}`);
 } else {
   // For AWS deployment, credentials will be picked up from the environment (e.g., IAM role)
   // and region should be set via AWS_REGION environment variable.

@@ -22,12 +22,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3002:3001" # Changed host port to 3002 to avoid conflict
+    env_file:
+      - ./server/.env
     environment:
-      # For current Mongoose setup (pre-DynamoDB refactor):
-      # - MONGODB_URI=mongodb://mongo:27017/recipe_app_db # Points to the mongo service below
-      - JWT_SECRET=yourSuperSecretKeyForJWTs # Change this in a real .env file for compose
-      - APP_PORT=3001
-      # --- Lines to uncomment/modify AFTER refactoring server for DynamoDB Local ---
+      # Override specific values for Docker network
       - DYNAMODB_ENDPOINT_OVERRIDE=http://dynamodb-local:8000
       - AWS_ACCESS_KEY_ID=dummy # For DynamoDB Local
       - AWS_SECRET_ACCESS_KEY=dummy # For DynamoDB Local
