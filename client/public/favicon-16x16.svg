@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
+  <!-- Background circle -->
+  <circle cx="8" cy="8" r="7.5" fill="#f97316" stroke="#ea580c" stroke-width="0.3"/>
+  
+  <!-- Chef hat (very simplified) -->
+  <path d="M5.5 5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5c0.69 0 1.25 0.56 1.25 1.25s-0.56 1.25-1.25 1.25H5.5c-0.69 0-1.25-0.56-1.25-1.25s0.56-1.25 1.25-1.25z" fill="white"/>
+  <rect x="6" y="7.5" width="4" height="1" rx="0.5" fill="white"/>
+  
+  <!-- Cooking pot (very simplified) -->
+  <ellipse cx="8" cy="11" rx="3" ry="0.8" fill="#374151"/>
+  <rect x="5" y="10" width="6" height="2.5" rx="0.5" fill="#6b7280"/>
+  <rect x="5.5" y="10.5" width="5" height="1.5" rx="0.3" fill="#9ca3af"/>
+  
+  <!-- Steam dots -->
+  <circle cx="6.5" cy="9.5" r="0.3" fill="white" opacity="0.7"/>
+  <circle cx="8" cy="9.2" r="0.3" fill="white" opacity="0.7"/>
+  <circle cx="9.5" cy="9.5" r="0.3" fill="white" opacity="0.7"/>
+</svg>

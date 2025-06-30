@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#f97316" stroke="#ea580c" stroke-width="0.5"/>
+  
+  <!-- Chef hat -->
+  <path d="M11 10.5c0-2.76 2.24-5 5-5s5 2.24 5 5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5H11c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5z" fill="white"/>
+  <path d="M12 15h8v2.5c0 0.55-0.45 1-1 1h-6c-0.55 0-1-0.45-1-1V15z" fill="white"/>
+  <line x1="13.5" y1="15" x2="13.5" y2="17" stroke="#f97316" stroke-width="0.5" stroke-linecap="round"/>
+  <line x1="16" y1="15" x2="16" y2="17" stroke="#f97316" stroke-width="0.5" stroke-linecap="round"/>
+  <line x1="18.5" y1="15" x2="18.5" y2="17" stroke="#f97316" stroke-width="0.5" stroke-linecap="round"/>
+  
+  <!-- Cooking pot -->
+  <ellipse cx="16" cy="22" rx="6" ry="1.5" fill="#374151"/>
+  <rect x="10" y="20" width="12" height="5" rx="1" fill="#6b7280"/>
+  <rect x="11" y="21" width="10" height="3" rx="0.5" fill="#9ca3af"/>
+  
+  <!-- Steam -->
+  <path d="M13 19c0-0.5 0.3-0.8 0.7-0.5s0.3 0.8 0 1.3s-0.7-0.3-0.7-0.8z" fill="white" opacity="0.7"/>
+  <path d="M16 18.5c0-0.7 0.5-1 0.8-0.5s0.3 1 0 1.5s-0.8-0.3-0.8-1z" fill="white" opacity="0.7"/>
+  <path d="M19 19c0-0.5 0.3-0.8 0.7-0.5s0.3 0.8 0 1.3s-0.7-0.3-0.7-0.8z" fill="white" opacity="0.7"/>
+  
+  <!-- Pot handles -->
+  <rect x="8.5" y="21.5" width="1.5" height="1" rx="0.5" fill="#374151"/>
+  <rect x="22" y="21.5" width="1.5" height="1" rx="0.5" fill="#374151"/>
+  
+  <!-- Utensils (simplified) -->
+  <circle cx="23" cy="25" r="0.8" fill="#fbbf24"/>
+  <rect x="22.6" y="25.8" width="0.8" height="3" rx="0.4" fill="#f59e0b"/>
+  
+  <rect x="9" y="25" width="0.6" height="3" rx="0.3" fill="#10b981"/>
+  <rect x="8.8" y="24.5" width="0.3" height="1" rx="0.15" fill="#10b981"/>
+  <rect x="9.3" y="24.5" width="0.3" height="1" rx="0.15" fill="#10b981"/>
+  <rect x="9.8" y="24.5" width="0.3" height="1" rx="0.15" fill="#10b981"/>
+</svg>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, Badge } from '../components/ui';
+import RecipeAppLogo from '../assets/recipe-app-logo.svg';
 
 const HomePage = () => {
   const features = [
@@ -56,6 +57,15 @@ const HomePage = () => {
       <section className="section-padding bg-gradient-to-br from-primary-50 via-white to-secondary-50">
         <div className="container-app">
           <div className="max-w-4xl mx-auto text-center">
+            {/* Logo */}
+            <div className="mb-8">
+              <img 
+                src={RecipeAppLogo} 
+                alt="RecipeApp Logo" 
+                className="w-32 h-32 mx-auto mb-4"
+              />
+            </div>
+            
             <Badge variant="primary" size="lg" className="mb-6">
               🎉 Welcome to RecipeApp
             </Badge>
