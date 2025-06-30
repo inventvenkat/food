@@ -8,6 +8,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require('uuid');
 const { getRecipeById } = require('./Recipe'); // Import getRecipeById
+const { batchGetRecipes } = require('../utils/batchLoader'); // Import batch loader
 
 const MEAL_PLANS_TABLE_NAME = process.env.MEAL_PLANS_TABLE_NAME || 'RecipeAppMealPlans';
 
@@ -73,23 +74,33 @@ async function getMealPlanEntriesForUserAndDate(userId, date) {
 
   try {
     const { Items } = await docClient.send(new QueryCommand(params));
-    // Populate recipe details for each entry
-    const populatedEntries = await Promise.all(Items.map(async (item) => {
+    
+    // Extract unique recipe IDs
+    const recipeIds = Items
+      .filter(item => item.recipeId && item.recipeId.startsWith('RECIPE#'))
+      .map(item => item.recipeId.substring(7));
+    
+    // Batch load all recipes at once
+    const recipes = recipeIds.length > 0 ? await batchGetRecipes(recipeIds) : [];
+    const recipeMap = new Map();
+    recipes.forEach((recipe, index) => {
+      if (recipe) {
+        recipeMap.set(recipeIds[index], recipe);
+      }
+    });
+    
+    // Populate entries with recipe data
+    const populatedEntries = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
       if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
         const plainRecipeId = entry.recipeId.substring(7);
-        try {
-          const recipeDetails = await getRecipeById(plainRecipeId);
-          entry.recipe = recipeDetails || null; // Attach recipe details or null if not found
-        } catch (recipeError) {
-          console.error(`Failed to fetch recipe ${plainRecipeId} for meal plan ${entry.mealPlanId}:`, recipeError);
-          entry.recipe = null; // Or some placeholder indicating an error
-        }
+        entry.recipe = recipeMap.get(plainRecipeId) || null;
       } else {
-        entry.recipe = null; // Invalid or missing recipeId
+        entry.recipe = null;
       }
       return entry;
-    }));
+    });
+    
     return populatedEntries;
   } catch (error) {
     console.error("Error fetching meal plan entries for date:", error);
@@ -115,23 +126,33 @@ async function getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate,
 
   try {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
-    // Populate recipe details for each entry
-    const populatedEntries = await Promise.all(Items.map(async (item) => {
+    
+    // Extract unique recipe IDs
+    const recipeIds = Items
+      .filter(item => item.recipeId && item.recipeId.startsWith('RECIPE#'))
+      .map(item => item.recipeId.substring(7));
+    
+    // Batch load all recipes at once
+    const recipes = recipeIds.length > 0 ? await batchGetRecipes(recipeIds) : [];
+    const recipeMap = new Map();
+    recipes.forEach((recipe, index) => {
+      if (recipe) {
+        recipeMap.set(recipeIds[index], recipe);
+      }
+    });
+    
+    // Populate entries with recipe data
+    const populatedEntries = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...entry } = item;
       if (entry.recipeId && entry.recipeId.startsWith('RECIPE#')) {
         const plainRecipeId = entry.recipeId.substring(7);
-        try {
-          const recipeDetails = await getRecipeById(plainRecipeId);
-          entry.recipe = recipeDetails || null; // Attach recipe details or null if not found
-        } catch (recipeError) {
-          console.error(`Failed to fetch recipe ${plainRecipeId} for meal plan ${entry.mealPlanId}:`, recipeError);
-          entry.recipe = null;
-        }
+        entry.recipe = recipeMap.get(plainRecipeId) || null;
       } else {
         entry.recipe = null;
       }
       return entry;
-    }));
+    });
+    
     return { entries: populatedEntries, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
     console.error("Error fetching meal plan entries for date range:", error);

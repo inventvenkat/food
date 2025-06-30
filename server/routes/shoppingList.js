@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const { getRecipeById } = require('../models/Recipe'); // To fetch recipe details
+const { batchGetRecipes } = require('../utils/batchLoader'); // Import batch loader
 const { getMealPlanEntriesForUserAndDateRange } = require('../models/MealPlan');
 
 // Simple ingredient to category mapping (can be expanded)
@@ -125,15 +126,58 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
     const aggregatedIngredients = {};
 
+    // Extract unique recipe IDs that are not already populated
+    const recipeIdsToFetch = [];
+    const entriesNeedingRecipes = [];
+    
     for (const entry of allMealPlanEntries) {
       if (!entry.recipeId || !entry.plannedServings) {
         console.warn(`Skipping meal plan entry ${entry.mealPlanId} due to missing recipeId or plannedServings.`);
         continue;
       }
 
-      // Fetch the recipe details for each meal plan entry
-      // The recipeId from meal plan should be like "RECIPE#<uuid>"
-      const recipeDetails = await getRecipeById(entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId);
+      // If recipe is already populated (from MealPlan optimization), use it
+      if (entry.recipe) {
+        continue; // Will process below with populated recipe
+      }
+      
+      // Otherwise, track for batch loading
+      const plainRecipeId = entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId;
+      if (!recipeIdsToFetch.includes(plainRecipeId)) {
+        recipeIdsToFetch.push(plainRecipeId);
+      }
+      entriesNeedingRecipes.push(entry);
+    }
+
+    // Batch load any missing recipes
+    let additionalRecipes = [];
+    if (recipeIdsToFetch.length > 0) {
+      additionalRecipes = await batchGetRecipes(recipeIdsToFetch);
+    }
+    
+    // Create recipe map for quick lookup
+    const recipeMap = new Map();
+    additionalRecipes.forEach((recipe, index) => {
+      if (recipe) {
+        recipeMap.set(recipeIdsToFetch[index], recipe);
+      }
+    });
+
+    // Process all meal plan entries
+    for (const entry of allMealPlanEntries) {
+      if (!entry.recipeId || !entry.plannedServings) {
+        continue; // Already logged above
+      }
+
+      let recipeDetails;
+      if (entry.recipe) {
+        // Recipe already populated from MealPlan optimization
+        recipeDetails = entry.recipe;
+      } else {
+        // Get from batch loaded recipes
+        const plainRecipeId = entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId;
+        recipeDetails = recipeMap.get(plainRecipeId);
+      }
 
       if (!recipeDetails || !recipeDetails.ingredients || recipeDetails.servings === undefined || recipeDetails.servings === 0) {
         console.warn(`Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);

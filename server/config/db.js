@@ -29,4 +29,13 @@ if (DYNAMODB_ENDPOINT_OVERRIDE) {
 const client = new DynamoDBClient(clientConfig);
 const docClient = DynamoDBDocumentClient.from(client);
 
-module.exports = { docClient, dynamodbClient: client }; // Export both document client and raw client
+// Function to get the raw DynamoDB client for batch operations
+function getDynamoClient() {
+  return client;
+}
+
+module.exports = { 
+  docClient, 
+  dynamodbClient: client, 
+  getDynamoClient 
+}; // Export both document client and raw client
