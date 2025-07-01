@@ -106,3 +106,93 @@ variable "acm_certificate_arn" {
   type        = string
   default     = "arn:aws:acm:us-east-1:872450838091:certificate/f8223c19-4279-4ce4-925a-47117fd03c0e"
 }
+
+# AI Configuration Variables
+variable "ai_provider" {
+  description = "The AI provider to use (xai, anthropic, groq, together, openai, ollama)"
+  type        = string
+  default     = "xai"
+}
+
+variable "ai_timeout" {
+  description = "Timeout for AI API requests in milliseconds"
+  type        = number
+  default     = 15000
+}
+
+variable "xai_api_key" {
+  description = "xAI API key for Grok models"
+  type        = string
+  default     = "xai-e8c9TRlFZElDdwN2hGfr6SPPAaYf81Y5dpP7v6NPYiSGfZT41n2nlGyZ8zPX96Zqh0C9qVt4ogY8DePP"
+  sensitive   = true
+}
+
+variable "xai_model" {
+  description = "xAI model to use"
+  type        = string
+  default     = "grok-2-latest"
+}
+
+variable "anthropic_api_key" {
+  description = "Anthropic API key for Claude models"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "anthropic_model" {
+  description = "Anthropic model to use"
+  type        = string
+  default     = "claude-3-haiku-20240307"
+}
+
+variable "groq_api_key" {
+  description = "Groq API key for fast inference"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "groq_model" {
+  description = "Groq model to use"
+  type        = string
+  default     = "llama3-8b-8192"
+}
+
+variable "together_api_key" {
+  description = "Together AI API key"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "together_model" {
+  description = "Together AI model to use"
+  type        = string
+  default     = "meta-llama/Llama-2-7b-chat-hf"
+}
+
+variable "openai_api_key" {
+  description = "OpenAI API key"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "openai_model" {
+  description = "OpenAI model to use"
+  type        = string
+  default     = "gpt-3.5-turbo"
+}
+
+variable "ollama_endpoint" {
+  description = "Ollama endpoint URL for local inference"
+  type        = string
+  default     = "http://localhost:11434"
+}
+
+variable "ollama_model" {
+  description = "Ollama model to use"
+  type        = string
+  default     = "llama3.2:1b"
+}

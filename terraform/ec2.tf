@@ -37,6 +37,21 @@ resource "aws_launch_template" "app" {
     recipes_table_name              = var.recipes_table_name
     recipe_collections_table_name   = var.recipe_collections_table_name
     meal_plans_table_name           = var.meal_plans_table_name
+    # AI Configuration
+    ai_provider                     = var.ai_provider
+    ai_timeout                      = var.ai_timeout
+    xai_api_key                     = var.xai_api_key
+    xai_model                       = var.xai_model
+    anthropic_api_key               = var.anthropic_api_key
+    anthropic_model                 = var.anthropic_model
+    groq_api_key                    = var.groq_api_key
+    groq_model                      = var.groq_model
+    together_api_key                = var.together_api_key
+    together_model                  = var.together_model
+    openai_api_key                  = var.openai_api_key
+    openai_model                    = var.openai_model
+    ollama_endpoint                 = var.ollama_endpoint
+    ollama_model                    = var.ollama_model
   }))
 
   # Enable detailed monitoring if desired ( incurs costs if not in free tier limits)

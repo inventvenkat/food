@@ -487,6 +487,132 @@ Extract as much information as possible. If a field is not found in the text, us
       }))
       .filter(ingredient => ingredient.name.length > 0); // Only keep ingredients with names
   }
+
+  /**
+   * Generate a general AI response for chat/assistance (not recipe parsing)
+   */
+  async generateResponse(prompt) {
+    try {
+      // Use the same AI provider as recipe parsing for consistency
+      switch (this.aiProvider) {
+        case 'xai':
+        case 'groq':
+          return await this.generateWithXAI(prompt);
+        case 'anthropic':
+          return await this.generateWithAnthropic(prompt);
+        case 'openai':
+          return await this.generateWithOpenAI(prompt);
+        case 'together':
+          return await this.generateWithTogether(prompt);
+        case 'ollama':
+        default:
+          return await this.generateWithOllama(prompt);
+      }
+    } catch (error) {
+      console.error(`AI response generation failed with ${this.aiProvider}:`, error.message);
+      
+      // Fallback to Ollama if primary provider fails
+      if (this.aiProvider !== 'ollama') {
+        try {
+          return await this.generateWithOllama(prompt);
+        } catch (fallbackError) {
+          console.error('Ollama fallback for response generation failed:', fallbackError.message);
+        }
+      }
+      
+      throw new Error('Unable to generate AI response');
+    }
+  }
+
+  // AI Response Generation Methods (for chat, not structured recipe parsing)
+
+  async generateWithXAI(prompt) {
+    if (!this.xaiApiKey) {
+      throw new Error('xAI API key not configured');
+    }
+
+    const response = await axios.post('https://api.x.ai/v1/chat/completions', {
+      model: this.xaiModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.7
+    }, {
+      headers: {
+        'Authorization': `Bearer ${this.xaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: this.timeout
+    });
+
+    return response.data.choices[0].message.content.trim();
+  }
+
+  async generateWithAnthropic(prompt) {
+    if (!this.anthropicClient) {
+      throw new Error('Anthropic client not configured');
+    }
+
+    const response = await this.anthropicClient.messages.create({
+      model: this.anthropicModel,
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    });
+
+    return response.content[0].text.trim();
+  }
+
+  async generateWithOpenAI(prompt) {
+    if (!this.openaiClient) {
+      throw new Error('OpenAI client not configured');
+    }
+
+    const response = await this.openaiClient.chat.completions.create({
+      model: this.openaiModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    return response.choices[0].message.content.trim();
+  }
+
+  async generateWithTogether(prompt) {
+    if (!this.togetherApiKey) {
+      throw new Error('Together API key not configured');
+    }
+
+    const response = await axios.post('https://api.together.xyz/inference', {
+      model: this.togetherModel,
+      prompt: prompt,
+      max_tokens: 500,
+      temperature: 0.7
+    }, {
+      headers: {
+        'Authorization': `Bearer ${this.togetherApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: this.timeout
+    });
+
+    return response.data.output.choices[0].text.trim();
+  }
+
+  async generateWithOllama(prompt) {
+    const response = await axios.post(`${this.ollamaEndpoint}/api/generate`, {
+      model: this.ollamaModel,
+      prompt: prompt,
+      stream: false,
+      options: {
+        temperature: 0.7,
+        num_predict: 500
+      }
+    }, {
+      timeout: this.timeout
+    });
+
+    return response.data.response.trim();
+  }
 }
 
 module.exports = AIRecipeParser;

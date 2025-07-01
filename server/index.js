@@ -77,6 +77,7 @@ const shoppingListRoutes = require('./routes/shoppingList');
 const mealPlanRoutes = require('./routes/mealPlans');
 const recipeCollectionRoutes = require('./routes/recipeCollections'); // Import collection routes
 const adminRoutes = require('./routes/admin'); // Import admin routes
+const aiAssistantRoutes = require('./routes/aiAssistant'); // Import AI assistant routes
 
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
@@ -84,6 +85,7 @@ app.use('/api/shopping-list', shoppingListRoutes);
 app.use('/api/mealplans', mealPlanRoutes);
 app.use('/api/collections', recipeCollectionRoutes); // Mount collection routes
 app.use('/api/admin', adminRoutes); // Mount admin routes
+app.use('/api/ai-assistant', aiAssistantRoutes); // Mount AI assistant routes
 
 // A simple API endpoint
 app.get('/api', (req, res) => {

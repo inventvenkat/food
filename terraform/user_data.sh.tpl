@@ -67,6 +67,21 @@ services:
       - RECIPES_TABLE_NAME=${recipes_table_name}
       - RECIPE_COLLECTIONS_TABLE_NAME=${recipe_collections_table_name}
       - MEAL_PLANS_TABLE_NAME=${meal_plans_table_name}
+      # AI Configuration
+      - AI_PROVIDER=${ai_provider}
+      - AI_TIMEOUT=${ai_timeout}
+      - XAI_API_KEY=${xai_api_key}
+      - XAI_MODEL=${xai_model}
+      - ANTHROPIC_API_KEY=${anthropic_api_key}
+      - ANTHROPIC_MODEL=${anthropic_model}
+      - GROQ_API_KEY=${groq_api_key}
+      - GROQ_MODEL=${groq_model}
+      - TOGETHER_API_KEY=${together_api_key}
+      - TOGETHER_MODEL=${together_model}
+      - OPENAI_API_KEY=${openai_api_key}
+      - OPENAI_MODEL=${openai_model}
+      - OLLAMA_ENDPOINT=${ollama_endpoint}
+      - OLLAMA_MODEL=${ollama_model}
     command: [
         "sh",
         "-c",
@@ -81,6 +96,13 @@ services:
          echo 'AWS_STS_REGIONAL_ENDPOINTS: [\$$AWS_STS_REGIONAL_ENDPOINTS]' &&
          echo 'APP_PORT: [\$$APP_PORT]' &&
          echo 'JWT_SECRET: [\$$JWT_SECRET]' &&
+         echo 'AI_PROVIDER: [\$$AI_PROVIDER]' &&
+         echo 'AI_TIMEOUT: [\$$AI_TIMEOUT]' &&
+         echo 'XAI_API_KEY: [MASKED]' &&
+         echo 'XAI_MODEL: [\$$XAI_MODEL]' &&
+         echo 'ANTHROPIC_API_KEY: [MASKED]' &&
+         echo 'GROQ_API_KEY: [MASKED]' &&
+         echo 'OLLAMA_ENDPOINT: [\$$OLLAMA_ENDPOINT]' &&
          echo '---------------------------------' &&
          echo 'Starting Node app (node index.js)...' &&
          node index.js"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment'; // Import moment
 
@@ -8,6 +8,7 @@ const DiscoverPage = () => {
   const [error, setError] = useState(''); // For recipe fetch errors
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [nextLek, setNextLek] = useState(null);
 
   // States for public collections
   const [collections, setCollections] = useState([]);
@@ -15,27 +16,41 @@ const DiscoverPage = () => {
   const [errorCollections, setErrorCollections] = useState('');
   const [collectionsPage, setCollectionsPage] = useState(1);
   const [hasMoreCollections, setHasMoreCollections] = useState(true);
+  const [collectionsNextLek, setCollectionsNextLek] = useState(null);
 
   // Search states
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredRecipes, setFilteredRecipes] = useState([]);
   const [filteredCollections, setFilteredCollections] = useState([]);
   const [searchCategory, setSearchCategory] = useState('all'); // 'all', 'recipes', 'collections'
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Refs for debouncing and focus management
+  const searchTimeoutRef = useRef(null);
+  const searchInputRef = useRef(null);
 
 
-  const fetchPublicRecipes = useCallback(async (pageNum = 1) => {
+  const fetchPublicRecipes = useCallback(async (isInitial = false, lastEvaluatedKey = null) => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/recipes/public?page=${pageNum}&limit=9`); // Fetch 9 per page for a 3-col grid
+      let url = '/api/recipes/public?limit=9'; // Fetch 9 per page for a 3-col grid
+      if (lastEvaluatedKey) {
+        url += `&lek=${encodeURIComponent(JSON.stringify(lastEvaluatedKey))}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch public recipes');
       }
       const data = await response.json();
-      setRecipes(prev => pageNum === 1 ? data.recipes : [...prev, ...data.recipes]);
-      // setTotalPages(data.totalPages); // Not used
-      setHasMore(data.currentPage < data.totalPages);
+      setRecipes(prev => isInitial ? data.recipes : [...prev, ...data.recipes]);
+      setNextLek(data.nextLek ? JSON.parse(decodeURIComponent(data.nextLek)) : null);
+      setHasMore(!!data.nextLek);
+      if (!isInitial) {
+        setPage(prev => prev + 1); // Keep track of page number for state
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -44,21 +59,30 @@ const DiscoverPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchPublicRecipes(1); 
+    fetchPublicRecipes(true); // isInitial = true
   }, [fetchPublicRecipes]);
 
-  const fetchPublicCollections = useCallback(async (pageNum = 1) => {
+  const fetchPublicCollections = useCallback(async (isInitial = false, lastEvaluatedKey = null) => {
     setLoadingCollections(true);
     setErrorCollections('');
     try {
-      const response = await fetch(`/api/collections/public?page=${pageNum}&limit=6`); // Fetch 6 collections
+      let url = '/api/collections/public?limit=6'; // Fetch 6 collections
+      if (lastEvaluatedKey) {
+        url += `&lek=${encodeURIComponent(JSON.stringify(lastEvaluatedKey))}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to fetch public collections');
       }
       const data = await response.json();
-      setCollections(prev => pageNum === 1 ? data.collections : [...prev, ...data.collections]);
-      setHasMoreCollections(data.currentPage < data.totalPages);
+      setCollections(prev => isInitial ? data.collections : [...prev, ...data.collections]);
+      setCollectionsNextLek(data.nextLek ? JSON.parse(decodeURIComponent(data.nextLek)) : null);
+      setHasMoreCollections(!!data.nextLek);
+      if (!isInitial) {
+        setCollectionsPage(prev => prev + 1);
+      }
     } catch (err) {
       setErrorCollections(err.message);
     } finally {
@@ -67,55 +91,132 @@ const DiscoverPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchPublicCollections(1); // Fetch initial page of collections
+    fetchPublicCollections(true); // isInitial = true
   }, [fetchPublicCollections]);
 
-  // Search and filter logic
+  // Update filtered data when original data changes
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredRecipes(recipes);
+    }
+  }, [recipes, searchTerm]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
       setFilteredCollections(collections);
+    }
+  }, [collections, searchTerm]);
+
+  // Optimized search with proper debouncing
+  const performSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      setFilteredRecipes(recipes);
+      setFilteredCollections(collections);
+      setIsSearching(false);
       return;
     }
 
-    const searchLower = searchTerm.toLowerCase();
-    
-    // Filter recipes
-    const filteredRecipeResults = recipes.filter(recipe => 
-      recipe.name.toLowerCase().includes(searchLower) ||
-      (recipe.description && recipe.description.toLowerCase().includes(searchLower)) ||
-      (recipe.category && recipe.category.toLowerCase().includes(searchLower)) ||
-      (recipe.tags && recipe.tags.some(tag => tag.toLowerCase().includes(searchLower))) ||
-      (recipe.user && recipe.user.username.toLowerCase().includes(searchLower))
-    );
+    setIsSearching(true);
+    setError('');
+    setErrorCollections('');
 
-    // Filter collections  
-    const filteredCollectionResults = collections.filter(collection =>
-      collection.name.toLowerCase().includes(searchLower) ||
-      (collection.description && collection.description.toLowerCase().includes(searchLower)) ||
-      (collection.user && collection.user.username.toLowerCase().includes(searchLower))
-    );
+    try {
+      // Search recipes and collections in parallel
+      const [recipeResponse, collectionResponse] = await Promise.all([
+        fetch(`/api/recipes/search?q=${encodeURIComponent(query)}&limit=50`),
+        fetch(`/api/collections/search?q=${encodeURIComponent(query)}&limit=50`)
+      ]);
 
-    setFilteredRecipes(filteredRecipeResults);
-    setFilteredCollections(filteredCollectionResults);
-  }, [searchTerm, recipes, collections]);
+      if (recipeResponse.ok) {
+        const recipeData = await recipeResponse.json();
+        setFilteredRecipes(recipeData.recipes);
+      } else {
+        setError('Failed to search recipes');
+        setFilteredRecipes([]);
+      }
+
+      if (collectionResponse.ok) {
+        const collectionData = await collectionResponse.json();
+        setFilteredCollections(collectionData.collections);
+      } else {
+        setErrorCollections('Failed to search collections');
+        setFilteredCollections([]);
+      }
+    } catch (err) {
+      setError('Search failed');
+      setErrorCollections('Search failed');
+      setFilteredRecipes([]);
+      setFilteredCollections([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [recipes, collections]);
+
+  // Debounced search effect - only triggers after user stops typing
+  useEffect(() => {
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // If search is empty, immediately show original data
+    if (!searchTerm.trim()) {
+      setFilteredRecipes(recipes);
+      setFilteredCollections(collections);
+      setIsSearching(false);
+      return;
+    }
+
+    // Set new timeout for search
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(searchTerm);
+    }, 800); // Increased debounce time to 800ms
+
+    // Cleanup function
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm, performSearch]);
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    // Show immediate visual feedback for typing
+    if (value.trim() && !isSearching) {
+      setIsSearching(true);
+    }
   };
 
   const clearSearch = () => {
+    // Clear timeout to prevent unnecessary search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
     setSearchTerm('');
+    setFilteredRecipes(recipes);
+    setFilteredCollections(collections);
+    setIsSearching(false);
+    setError('');
+    setErrorCollections('');
+    
+    // Maintain focus on search input
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
   };
 
   const loadMoreRecipes = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchPublicRecipes(nextPage);
+    if (nextLek && hasMore) {
+      fetchPublicRecipes(false, nextLek); // isInitial = false, use nextLek
+    }
   };
 
-  // Combined loading state for initial load
-  if ((loading && page === 1) || (loadingCollections && collectionsPage === 1)) {
+  // Combined loading state for initial load (not search loading)
+  if ((loading && page === 1 && !searchTerm) || (loadingCollections && collectionsPage === 1 && !searchTerm)) {
     return <div className="text-center p-10">Loading discoveries...</div>;
   }
   // Display individual errors if they occur
@@ -124,9 +225,9 @@ const DiscoverPage = () => {
 
 
   const loadMoreCollections = () => {
-    const nextPage = collectionsPage + 1;
-    setCollectionsPage(nextPage);
-    fetchPublicCollections(nextPage);
+    if (collectionsNextLek && hasMoreCollections) {
+      fetchPublicCollections(false, collectionsNextLek); // isInitial = false, use collectionsNextLek
+    }
   };
 
   // Determine which data to display
@@ -148,13 +249,22 @@ const DiscoverPage = () => {
             </svg>
           </div>
           <input
+            ref={searchInputRef}
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
             placeholder="Search recipes and collections by name, category, ingredients, tags, or author..."
             className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          {searchTerm && (
+          {isSearching && searchTerm && (
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <svg className="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          )}
+          {searchTerm && !isSearching && (
             <button
               onClick={clearSearch}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
@@ -203,14 +313,20 @@ const DiscoverPage = () => {
         {/* Search Results Summary */}
         {searchTerm && (
           <div className="text-center mt-4 text-gray-600">
-            {searchCategory === 'all' && (
-              <p>Found {displayedRecipes.length} recipe(s) and {displayedCollections.length} collection(s) for "{searchTerm}"</p>
-            )}
-            {searchCategory === 'recipes' && (
-              <p>Found {displayedRecipes.length} recipe(s) for "{searchTerm}"</p>
-            )}
-            {searchCategory === 'collections' && (
-              <p>Found {displayedCollections.length} collection(s) for "{searchTerm}"</p>
+            {isSearching ? (
+              <p>Searching...</p>
+            ) : (
+              <>
+                {searchCategory === 'all' && (
+                  <p>Found {displayedRecipes.length} recipe(s) and {displayedCollections.length} collection(s) for "{searchTerm}"</p>
+                )}
+                {searchCategory === 'recipes' && (
+                  <p>Found {displayedRecipes.length} recipe(s) for "{searchTerm}"</p>
+                )}
+                {searchCategory === 'collections' && (
+                  <p>Found {displayedCollections.length} collection(s) for "{searchTerm}"</p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -255,13 +371,13 @@ const DiscoverPage = () => {
             <div className="text-center mt-8">
               <button
                 onClick={loadMoreRecipes}
-                className="btn-primary" // Assuming .btn-primary is globally available or defined via style jsx
+                className="btn-primary"
               >
                 Load More Recipes
               </button>
             </div>
           )}
-          {loading && page > 1 && <div className="text-center p-4">Loading more recipes...</div>}
+          {!searchTerm && loading && page > 1 && <div className="text-center p-4">Loading more recipes...</div>}
         </section>
       )}
 
@@ -306,7 +422,7 @@ const DiscoverPage = () => {
               </button>
             </div>
           )}
-          {loadingCollections && collectionsPage > 1 && <div className="text-center p-4">Loading more collections...</div>}
+          {!searchTerm && loadingCollections && collectionsPage > 1 && <div className="text-center p-4">Loading more collections...</div>}
         </section>
       )}
     </div>

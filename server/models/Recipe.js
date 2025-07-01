@@ -170,6 +170,45 @@ async function getPublicRecipes(limit = 10, lastEvaluatedKey = null) {
   });
 }
 
+// Search public recipes with text query
+async function searchPublicRecipes(searchTerm, limit = 20, lastEvaluatedKey = null) {
+  if (!searchTerm || !searchTerm.trim()) {
+    return getPublicRecipes(limit, lastEvaluatedKey);
+  }
+
+  const params = {
+    TableName: RECIPES_TABLE_NAME,
+    IndexName: 'GSI2PK-GSI2SK-index',
+    KeyConditionExpression: "GSI2PK = :gsi2pk",
+    FilterExpression: "contains(#name, :searchTerm) OR contains(description, :searchTerm) OR contains(category, :searchTerm) OR contains(authorUsername, :searchTerm) OR contains(tags, :searchTerm)",
+    ExpressionAttributeNames: {
+      "#name": "name", // 'name' might be a reserved word in DynamoDB
+    },
+    ExpressionAttributeValues: {
+      ":gsi2pk": `PUBLIC#TRUE`,
+      ":searchTerm": searchTerm.toLowerCase(),
+    },
+    ScanIndexForward: false, // Newest first
+    Limit: limit,
+  };
+
+  if (lastEvaluatedKey) {
+    params.ExclusiveStartKey = lastEvaluatedKey;
+  }
+
+  try {
+    const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
+    const recipes = Items.map(item => {
+      const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = item;
+      return recipe;
+    });
+    return { recipes, lastEvaluatedKey: LastEvaluatedKey };
+  } catch (error) {
+    console.error("Error searching public recipes:", error);
+    throw new Error('Could not search public recipes.');
+  }
+}
+
 
 async function updateRecipe(recipeId, authorId, updateData) {
   const timestamp = new Date().toISOString();
@@ -291,6 +330,7 @@ module.exports = {
   getRecipeById,
   getRecipesByAuthor,
   getPublicRecipes,
+  searchPublicRecipes,
   updateRecipe,
   deleteRecipe,
   RECIPES_TABLE_NAME

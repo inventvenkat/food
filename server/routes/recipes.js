@@ -8,6 +8,7 @@ const {
   getRecipeById,
   getRecipesByAuthor,
   getPublicRecipes,
+  searchPublicRecipes,
   updateRecipe,
   deleteRecipe,
   // getRecipesByCategory, // Example, if you implement this in Recipe.js
@@ -72,6 +73,28 @@ router.get('/public', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching public recipes:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET /api/recipes/search
+// @desc    Search public recipes
+// @access  Public
+router.get('/search', async (req, res) => {
+  const searchTerm = req.query.q || '';
+  const limit = parseInt(req.query.limit) || 20;
+  const lastEvaluatedKey = req.query.lek ? JSON.parse(decodeURIComponent(req.query.lek)) : null;
+
+  try {
+    const { recipes, lastEvaluatedKey: newLek } = await searchPublicRecipes(searchTerm, limit, lastEvaluatedKey);
+
+    res.json({
+      recipes,
+      searchTerm,
+      nextLek: newLek ? encodeURIComponent(JSON.stringify(newLek)) : null,
+    });
+  } catch (err) {
+    console.error('Error searching public recipes:', err.message);
     res.status(500).send('Server Error');
   }
 });
