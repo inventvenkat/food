@@ -8,6 +8,7 @@ const {
   ScanCommand // Added for simple public recipe listing initially
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require('uuid');
+const { RecipeCacheManager } = require('../utils/cache');
 
 const RECIPES_TABLE_NAME = process.env.RECIPES_TABLE_NAME || 'RecipeAppRecipes';
 
@@ -75,25 +76,38 @@ async function createRecipe({ recipeData, authorId, authorUsername }) {
 }
 
 async function getRecipeById(recipeId) {
-  const params = {
-    TableName: RECIPES_TABLE_NAME,
-    Key: {
-      PK: `RECIPE#${recipeId}`,
-      SK: `METADATA#${recipeId}`,
-    },
-  };
+  console.log('[Recipe Model] Getting recipe by ID:', recipeId);
+  return RecipeCacheManager.getRecipe(recipeId, async () => {
+    console.log('[Recipe Model] Cache miss, fetching from DB for ID:', recipeId);
+    const params = {
+      TableName: RECIPES_TABLE_NAME,
+      Key: {
+        PK: `RECIPE#${recipeId}`,
+        SK: `METADATA#${recipeId}`,
+      },
+    };
 
-  try {
-    const { Item } = await docClient.send(new GetCommand(params));
-    if (Item) {
-      const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = Item;
-      return recipe;
+    try {
+      const { Item } = await docClient.send(new GetCommand(params));
+      if (Item) {
+        const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = Item;
+        console.log('[Recipe Model] Found recipe:', { 
+          id: recipe.recipeId, 
+          name: recipe.name, 
+          isPublic: recipe.isPublic,
+          authorId: recipe.authorId,
+          ingredientsCount: recipe.ingredients?.length || 0
+        });
+        return recipe;
+      } else {
+        console.log('[Recipe Model] Recipe not found in DB for ID:', recipeId);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error getting recipe by ID:", error);
+      throw new Error('Could not retrieve recipe.');
     }
-    return null;
-  } catch (error) {
-    console.error("Error getting recipe by ID:", error);
-    throw new Error('Could not retrieve recipe.');
-  }
+  });
 }
 
 async function getRecipesByAuthor(authorId, limit = 10, lastEvaluatedKey = null) {
@@ -128,19 +142,60 @@ async function getRecipesByAuthor(authorId, limit = 10, lastEvaluatedKey = null)
 // A Scan is generally not recommended for large tables in production without careful consideration.
 // Using GSI2 (PUBLIC#TRUE / CREATEDAT#<timestamp>) would be more performant.
 async function getPublicRecipes(limit = 10, lastEvaluatedKey = null) {
-   const params = {
+  return RecipeCacheManager.getPublicRecipes(limit, lastEvaluatedKey, async () => {
+    const params = {
+      TableName: RECIPES_TABLE_NAME,
+      IndexName: 'GSI2PK-GSI2SK-index',
+      KeyConditionExpression: "GSI2PK = :gsi2pk",
+      ExpressionAttributeValues: {
+        ":gsi2pk": `PUBLIC#TRUE`,
+      },
+      ScanIndexForward: false, // Newest first based on GSI2SK (createdAt)
+      Limit: limit,
+    };
+    if (lastEvaluatedKey) {
+      params.ExclusiveStartKey = lastEvaluatedKey;
+    }
+    try {
+      const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
+      const recipes = Items.map(item => {
+        const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = item;
+        return recipe;
+      });
+      return { recipes, lastEvaluatedKey: LastEvaluatedKey };
+    } catch (error) {
+      console.error("Error getting public recipes:", error);
+      throw new Error('Could not retrieve public recipes.');
+    }
+  });
+}
+
+// Search public recipes with text query
+async function searchPublicRecipes(searchTerm, limit = 20, lastEvaluatedKey = null) {
+  if (!searchTerm || !searchTerm.trim()) {
+    return getPublicRecipes(limit, lastEvaluatedKey);
+  }
+
+  const params = {
     TableName: RECIPES_TABLE_NAME,
     IndexName: 'GSI2PK-GSI2SK-index',
     KeyConditionExpression: "GSI2PK = :gsi2pk",
+    FilterExpression: "contains(#name, :searchTerm) OR contains(description, :searchTerm) OR contains(category, :searchTerm) OR contains(authorUsername, :searchTerm) OR contains(tags, :searchTerm)",
+    ExpressionAttributeNames: {
+      "#name": "name", // 'name' might be a reserved word in DynamoDB
+    },
     ExpressionAttributeValues: {
       ":gsi2pk": `PUBLIC#TRUE`,
+      ":searchTerm": searchTerm.toLowerCase(),
     },
-    ScanIndexForward: false, // Newest first based on GSI2SK (createdAt)
+    ScanIndexForward: false, // Newest first
     Limit: limit,
   };
+
   if (lastEvaluatedKey) {
     params.ExclusiveStartKey = lastEvaluatedKey;
   }
+
   try {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     const recipes = Items.map(item => {
@@ -149,8 +204,8 @@ async function getPublicRecipes(limit = 10, lastEvaluatedKey = null) {
     });
     return { recipes, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
-    console.error("Error getting public recipes:", error);
-    throw new Error('Could not retrieve public recipes.');
+    console.error("Error searching public recipes:", error);
+    throw new Error('Could not search public recipes.');
   }
 }
 
@@ -226,6 +281,10 @@ async function updateRecipe(recipeId, authorId, updateData) {
   try {
     const { Attributes } = await docClient.send(new UpdateCommand(params));
     const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = Attributes;
+    
+    // Invalidate cache for the updated recipe
+    RecipeCacheManager.invalidateRecipe(recipeId);
+    
     return recipe;
   } catch (error) {
     console.error("Error updating recipe:", error);
@@ -251,6 +310,10 @@ async function deleteRecipe(recipeId, authorId) {
 
   try {
     await docClient.send(new DeleteCommand(params));
+    
+    // Invalidate cache for the deleted recipe
+    RecipeCacheManager.invalidateRecipe(recipeId);
+    
     return { message: 'Recipe deleted successfully' };
   } catch (error) {
     console.error("Error deleting recipe:", error);
@@ -267,6 +330,7 @@ module.exports = {
   getRecipeById,
   getRecipesByAuthor,
   getPublicRecipes,
+  searchPublicRecipes,
   updateRecipe,
   deleteRecipe,
   RECIPES_TABLE_NAME

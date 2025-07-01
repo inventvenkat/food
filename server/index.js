@@ -10,6 +10,8 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 const port = process.env.APP_PORT || 3001;
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { PingCommand } = require('@aws-sdk/client-dynamodb');
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -74,27 +76,65 @@ const recipeRoutes = require('./routes/recipes');
 const shoppingListRoutes = require('./routes/shoppingList');
 const mealPlanRoutes = require('./routes/mealPlans');
 const recipeCollectionRoutes = require('./routes/recipeCollections'); // Import collection routes
+const adminRoutes = require('./routes/admin'); // Import admin routes
+const aiAssistantRoutes = require('./routes/aiAssistant'); // Import AI assistant routes
 
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/shopping-list', shoppingListRoutes);
 app.use('/api/mealplans', mealPlanRoutes);
 app.use('/api/collections', recipeCollectionRoutes); // Mount collection routes
+app.use('/api/admin', adminRoutes); // Mount admin routes
+app.use('/api/ai-assistant', aiAssistantRoutes); // Mount AI assistant routes
 
 // A simple API endpoint
 app.get('/api', (req, res) => {
   res.json({ message: 'Hello from the Recipe App API!' });
 });
 
+// Simple health check endpoint (for load balancer)
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Deep health check endpoint (includes DynamoDB connection)
+app.get('/health/deep', async (req, res) => {
+  const healthStatus = {
+    status: 'OK',
+    server: 'running',
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    // Check DynamoDB connection using the configured client
+    const { dynamodbClient } = require('./config/db');
+    await dynamodbClient.send(new PingCommand({}));
+    healthStatus.dynamodb = 'connected';
+  } catch (error) {
+    console.warn('DynamoDB health check failed (development mode):', error.message);
+    healthStatus.dynamodb = 'unavailable (development mode)';
+    healthStatus.note = 'Server running in development mode without DynamoDB';
+  }
+
+  res.status(200).json(healthStatus);
+});
+
 // Initialize DynamoDB tables before starting the server
 initializeDatabase().then(() => {
+  console.log("✅ DynamoDB initialization successful");
+  startServer();
+}).catch(err => {
+  console.warn("⚠️ DynamoDB initialization failed (this is OK for development without local DynamoDB):", err.message);
+  console.log("🚀 Starting server in development mode without DynamoDB...");
+  startServer();
+});
+
+function startServer() {
   console.log(`[DEBUG] process.env.APP_PORT before fallback: ${process.env.APP_PORT}`);
   console.log(`[DEBUG] process.env.PORT (original) before fallback: ${process.env.PORT}`);
   console.log(`[DEBUG] Resolved port variable (from APP_PORT): ${port}`);
   app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port} (Internal port: ${port}, using APP_PORT: ${process.env.APP_PORT}, original PORT: ${process.env.PORT})`);
+    console.log(`🚀 Server is running on http://localhost:${port} (Internal port: ${port}, using APP_PORT: ${process.env.APP_PORT}, original PORT: ${process.env.PORT})`);
+    console.log(`📡 Frontend should connect to: http://localhost:${port}`);
   });
-}).catch(err => {
-  console.error("Failed to initialize database or start server:", err);
-  process.exit(1);
-});
+}

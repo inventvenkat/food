@@ -92,7 +92,8 @@ const RecipeDetailPage = () => {
     const isOwner = recipe && recipe.authorId && currentUserId && recipe.authorId === `USER#${currentUserId}`;
 
     if (!recipe || !isOwner) {
-      alert("You can only change the status of your own recipes.");
+      setError("You can only change the status of your own recipes.");
+      setTimeout(() => setError(''), 3000);
       return;
     }
     const token = localStorage.getItem('token');
@@ -116,7 +117,7 @@ const RecipeDetailPage = () => {
       }
       const updatedRecipe = await response.json();
       setRecipe(updatedRecipe); // Update local state
-      alert(`Recipe status changed to ${newPublicStatus ? 'Public' : 'Private'}.`);
+      // Recipe status changed silently
     } catch (err) {
       setError(err.message);
       console.error("Toggle public status error:", err);
@@ -124,9 +125,7 @@ const RecipeDetailPage = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
-      return;
-    }
+    // Delete recipe without confirmation
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -148,7 +147,7 @@ const RecipeDetailPage = () => {
         throw new Error(errData.message || 'Failed to delete recipe');
       }
 
-      alert('Recipe deleted successfully.');
+      // Recipe deleted - navigate back silently
       navigate('/my-recipes'); // Navigate back to the list of recipes
 
     } catch (err) {

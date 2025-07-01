@@ -16,6 +16,7 @@ import CreateCollectionPage from './pages/CreateCollectionPage';
 import CollectionDetailPage from './pages/CollectionDetailPage'; // Import CollectionDetailPage
 import EditCollectionPage from './pages/EditCollectionPage'; // Import EditCollectionPage
 import ProtectedRoute from './components/ProtectedRoute';
+import { ChatWidget } from './components/AIAssistant';
 
 // Helper to parse JWT. In a real app, consider a library like jwt-decode.
 const parseJwt = (token) => {
@@ -58,7 +59,7 @@ function App() {
     // To redirect, LoginPage/RegisterPage or a wrapper component for Routes would be better.
     // For now, Navbar will just update its state. User might need to manually navigate or refresh.
     // A more robust solution would involve useNavigate, potentially by wrapping Routes in a component.
-    alert("You have been logged out."); // Simple feedback
+    // User logged out - no popup needed
   };
 
   return (
@@ -88,6 +89,8 @@ function App() {
             
           </Routes>
         </main>
+        {/* AI Assistant Chat Widget - Available on all pages */}
+        <ChatWidget />
         {/* Optional: Footer can be added here */}
       </div>
     </Router>

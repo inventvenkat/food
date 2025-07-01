@@ -52,10 +52,12 @@ const CollectionDetailPage = () => {
   }, [collectionId, fetchCollectionDetails]);
 
   const handleDeleteCollection = async () => {
-    if (!window.confirm('Are you sure you want to delete this collection? This action cannot be undone.')) return;
+    // Delete collection without confirmation
     const token = localStorage.getItem('token');
     if (!token || !collection || currentUserId !== collection.user._id) {
-      alert('You are not authorized to delete this collection.'); return;
+      setError('You are not authorized to delete this collection.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     try {
       const response = await fetch(`/api/collections/${collectionId}`, {
@@ -66,7 +68,7 @@ const CollectionDetailPage = () => {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to delete collection.');
       }
-      alert('Collection deleted successfully.');
+      // Collection deleted - navigate back silently
       navigate('/my-collections');
     } catch (err) {
       setError(err.message);

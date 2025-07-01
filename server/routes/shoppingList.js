@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const { getRecipeById } = require('../models/Recipe'); // To fetch recipe details
+const { batchGetRecipes } = require('../utils/batchLoader'); // Import batch loader
 const { getMealPlanEntriesForUserAndDateRange } = require('../models/MealPlan');
 
 // Simple ingredient to category mapping (can be expanded)
@@ -102,6 +103,8 @@ router.post('/generate', authMiddleware, async (req, res) => {
   const { startDate, endDate } = req.body;
   const userId = req.user.id;
 
+  console.log('[ShoppingList] Generating shopping list for user:', userId, 'from:', startDate, 'to:', endDate);
+
   // TODO: Add robust date validation
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'Please provide both start and end dates.' });
@@ -111,44 +114,143 @@ router.post('/generate', authMiddleware, async (req, res) => {
     // Fetch all meal plan entries for the user in the date range
     // Note: getMealPlanEntriesForUserAndDateRange handles pagination internally if we fetch all.
     // For very large ranges/many entries, this might need to be batched.
+    console.log('[ShoppingList] Calling getMealPlanEntriesForUserAndDateRange with:', { userId, startDate, endDate });
+    
     let allMealPlanEntries = [];
     let lastKey = null;
     do {
         const { entries, lastEvaluatedKey: newLek } = await getMealPlanEntriesForUserAndDateRange(userId, startDate, endDate, 100, lastKey);
+        console.log('[ShoppingList] Got batch of entries:', entries.length, 'lastKey:', !!newLek);
         allMealPlanEntries.push(...entries);
         lastKey = newLek;
     } while (lastKey);
 
+    console.log('[ShoppingList] Found meal plan entries:', allMealPlanEntries.length);
+    console.log('[ShoppingList] Entries with public recipes:', allMealPlanEntries.filter(entry => entry.recipe?.isPublic === true).length);
+    console.log('[ShoppingList] Entries with private recipes:', allMealPlanEntries.filter(entry => entry.recipe?.isPublic === false).length);
+    console.log('[ShoppingList] Entries with null recipes:', allMealPlanEntries.filter(entry => entry.recipe === null).length);
+    allMealPlanEntries.forEach((entry, index) => {
+      console.log(`[ShoppingList] Entry ${index + 1}:`, {
+        mealPlanId: entry.mealPlanId,
+        recipeId: entry.recipeId,
+        hasRecipe: !!entry.recipe,
+        recipeName: entry.recipe?.name || 'No recipe populated',
+        plannedServings: entry.plannedServings
+      });
+    });
+
     if (allMealPlanEntries.length === 0) {
+      console.log('[ShoppingList] No meal plan entries found, returning empty');
       return res.status(200).json({}); // Return empty object if no meals in range
     }
 
     const aggregatedIngredients = {};
 
+    // Extract unique recipe IDs that are not already populated
+    const recipeIdsToFetch = [];
+    const entriesNeedingRecipes = [];
+    
     for (const entry of allMealPlanEntries) {
       if (!entry.recipeId || !entry.plannedServings) {
         console.warn(`Skipping meal plan entry ${entry.mealPlanId} due to missing recipeId or plannedServings.`);
         continue;
       }
 
-      // Fetch the recipe details for each meal plan entry
-      // The recipeId from meal plan should be like "RECIPE#<uuid>"
-      const recipeDetails = await getRecipeById(entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId);
+      // If recipe is already populated (from MealPlan optimization), use it
+      if (entry.recipe) {
+        continue; // Will process below with populated recipe
+      }
+      
+      // Otherwise, track for batch loading
+      const plainRecipeId = entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId;
+      if (!recipeIdsToFetch.includes(plainRecipeId)) {
+        recipeIdsToFetch.push(plainRecipeId);
+      }
+      entriesNeedingRecipes.push(entry);
+    }
+
+    // Batch load any missing recipes
+    let additionalRecipes = [];
+    if (recipeIdsToFetch.length > 0) {
+      additionalRecipes = await batchGetRecipes(recipeIdsToFetch);
+    }
+    
+    // Create recipe map for quick lookup
+    const recipeMap = new Map();
+    additionalRecipes.forEach((recipe, index) => {
+      if (recipe) {
+        recipeMap.set(recipeIdsToFetch[index], recipe);
+      }
+    });
+
+    // Process all meal plan entries
+    for (const entry of allMealPlanEntries) {
+      if (!entry.recipeId || !entry.plannedServings) {
+        continue; // Already logged above
+      }
+
+      let recipeDetails;
+      if (entry.recipe) {
+        // Recipe already populated from MealPlan optimization
+        recipeDetails = entry.recipe;
+        console.log('[ShoppingList] Using populated recipe:', recipeDetails.name, 'ID:', recipeDetails.recipeId);
+      } else {
+        // Get from batch loaded recipes
+        const plainRecipeId = entry.recipeId.startsWith('RECIPE#') ? entry.recipeId.substring(7) : entry.recipeId;
+        recipeDetails = recipeMap.get(plainRecipeId);
+        console.log('[ShoppingList] Using batch loaded recipe:', recipeDetails?.name || 'NOT FOUND', 'for ID:', plainRecipeId);
+      }
+      
+      console.log('[ShoppingList] Recipe details for processing:', {
+        name: recipeDetails?.name,
+        id: recipeDetails?.recipeId || recipeDetails?.id,
+        hasIngredients: !!recipeDetails?.ingredients,
+        ingredientsCount: recipeDetails?.ingredients?.length || 0,
+        servings: recipeDetails?.servings
+      });
 
       if (!recipeDetails || !recipeDetails.ingredients || recipeDetails.servings === undefined || recipeDetails.servings === 0) {
-        console.warn(`Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);
+        console.warn(`[ShoppingList] Skipping recipe ${entry.recipeId} in meal plan entry ${entry.mealPlanId} due to missing data or zero servings.`);
+        console.warn(`[ShoppingList] Recipe details:`, { 
+          hasRecipe: !!recipeDetails, 
+          hasIngredients: !!recipeDetails?.ingredients, 
+          ingredientsLength: recipeDetails?.ingredients?.length || 0,
+          servings: recipeDetails?.servings 
+        });
         continue;
       }
 
       const scaleFactor = entry.plannedServings / recipeDetails.servings;
+      console.log(`[ShoppingList] Processing recipe ${recipeDetails.name}: ${entry.plannedServings} servings (scale ${scaleFactor}x from ${recipeDetails.servings})`);
+      console.log(`[ShoppingList] Recipe ingredients list:`, recipeDetails.ingredients.map(ing => `${ing.quantity || ing.amount} ${ing.unit} ${ing.name}`));
 
-      recipeDetails.ingredients.forEach(ing => {
-        if (!ing.name || ing.quantity === undefined || ing.unit === undefined) {
-          console.warn(`Skipping ingredient in recipe ${recipeDetails.recipeId} due to missing fields.`);
+      recipeDetails.ingredients.forEach((ing, index) => {
+        // Handle both 'quantity' and 'amount' field names for compatibility
+        let quantity = ing.quantity !== undefined ? ing.quantity : ing.amount;
+        let unit = ing.unit || '';
+        
+        // Skip ingredients without a name
+        if (!ing.name || ing.name.trim() === '') {
+          console.warn(`[ShoppingList] Skipping ingredient ${index} in recipe ${recipeDetails.name} due to missing name:`, ing);
           return;
         }
-        const scaledQuantityStr = parseAndScaleQuantity(ing.quantity, scaleFactor);
-        const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`;
+        
+        // Handle empty quantity/amount by defaulting to "1"
+        if (quantity === '' || quantity === null || quantity === undefined) {
+          console.warn(`[ShoppingList] Using default quantity "1" for ingredient ${index} (${ing.name}) in recipe ${recipeDetails.name}:`, ing);
+          quantity = "1";
+        }
+        
+        // Handle empty unit by defaulting to "item" or "piece"
+        if (unit === '' || unit === null || unit === undefined) {
+          console.warn(`[ShoppingList] Using default unit "item" for ingredient ${index} (${ing.name}) in recipe ${recipeDetails.name}:`, ing);
+          unit = "item";
+        }
+        
+        const scaledQuantityStr = parseAndScaleQuantity(quantity, scaleFactor);
+        const key = `${ing.name.toLowerCase().trim()}_${unit.toLowerCase().trim()}`;
+        
+        console.log(`[ShoppingList] Processing ingredient: ${quantity} ${unit} ${ing.name} → ${scaledQuantityStr} ${unit} ${ing.name}`);
 
         if (aggregatedIngredients[key]) {
           // Basic aggregation: sum quantities if possible, otherwise concatenate
@@ -168,7 +270,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
           aggregatedIngredients[key] = {
             name: ing.name,
             quantity: scaledQuantityStr,
-            unit: ing.unit,
+            unit: unit,
           };
         }
       });
@@ -182,6 +284,9 @@ router.post('/generate', authMiddleware, async (req, res) => {
       }
       shoppingListCategorized[category].push(ing);
     });
+
+    console.log('[ShoppingList] Final aggregated ingredients count:', Object.keys(aggregatedIngredients).length);
+    console.log('[ShoppingList] Final categorized shopping list:', shoppingListCategorized);
 
     res.json(shoppingListCategorized);
 

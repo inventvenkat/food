@@ -14,7 +14,6 @@ const MealPlannerPage = () => {
   const navigate = useNavigate();
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState('month');
   const [isControlsOpen, setIsControlsOpen] = useState(false); // State for collapsible section
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -27,13 +26,13 @@ const MealPlannerPage = () => {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [mealPlanEntryToDelete, setMealPlanEntryToDelete] = useState(null);
 
-  const [shoppingListStartDate, setShoppingListStartDate] = useState(moment().startOf('week').format('YYYY-MM-DD'));
-  const [shoppingListEndDate, setShoppingListEndDate] = useState(moment().endOf('week').format('YYYY-MM-DD'));
+  const [shoppingListStartDate, setShoppingListStartDate] = useState(moment().format('YYYY-MM-DD'));
+  const [shoppingListEndDate, setShoppingListEndDate] = useState(moment().add(6, 'days').format('YYYY-MM-DD'));
 
   // States for copy meal plan feature
-  const [copySourceStart, setCopySourceStart] = useState(moment().startOf('week').format('YYYY-MM-DD'));
-  const [copySourceEnd, setCopySourceEnd] = useState(moment().endOf('week').format('YYYY-MM-DD'));
-  const [copyDestStart, setCopyDestStart] = useState(moment().add(1, 'week').startOf('week').format('YYYY-MM-DD'));
+  const [copySourceStart, setCopySourceStart] = useState(moment().format('YYYY-MM-DD'));
+  const [copySourceEnd, setCopySourceEnd] = useState(moment().add(6, 'days').format('YYYY-MM-DD'));
+  const [copyDestStart, setCopyDestStart] = useState(moment().add(7, 'days').format('YYYY-MM-DD'));
   const [copyStatus, setCopyStatus] = useState(''); // For success/error messages from copy operation
 
   const fetchMealPlans = useCallback(async () => {
@@ -50,12 +49,17 @@ const MealPlannerPage = () => {
       if (!response.ok) throw new Error('Failed to fetch meal plans.');
       const data = await response.json();
       const events = data.map(plan => {
+        // Convert YYYY-MM-DD string to local date to avoid timezone issues
+        const dateStr = plan.date;
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const localDate = new Date(year, month - 1, day); // month is 0-indexed
+        
         if (!plan.recipe) { // If recipe was deleted and populate returned null
           return {
             id: plan.mealPlanId, // Use mealPlanId
             title: `${plan.mealType}: (Deleted Recipe)`, // Display a placeholder
-            start: new Date(plan.date),
-            end: new Date(plan.date),
+            start: localDate,
+            end: localDate,
             allDay: true,
             // Provide a minimal resource object so event handlers don't break
             resource: { ...plan, recipe: { name: "(Deleted Recipe)", _id: null } }
@@ -65,8 +69,8 @@ const MealPlannerPage = () => {
         return {
           id: plan.mealPlanId, // Use mealPlanId
           title: `${plan.mealType}: ${plan.recipe.name} (${plan.plannedServings} serv.)`,
-          start: new Date(plan.date),
-          end: new Date(plan.date),
+          start: localDate,
+          end: localDate,
           allDay: true,
           resource: plan,
         };
@@ -82,14 +86,33 @@ const MealPlannerPage = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const response = await fetch('/api/recipes', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Failed to fetch user recipes.');
-      const data = await response.json();
-      setUserRecipes(data.recipes || []); // Ensure userRecipes is an array
+      // Fetch both user's recipes and public recipes for meal planning
+      const [userResponse, publicResponse] = await Promise.all([
+        fetch('/api/recipes', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }),
+        fetch('/api/recipes/public?limit=200') // Get more public recipes for variety
+      ]);
+      
+      if (!userResponse.ok) throw new Error('Failed to fetch user recipes.');
+      const userData = await userResponse.json();
+      const userRecipes = userData.recipes || [];
+      
+      let publicRecipes = [];
+      if (publicResponse.ok) {
+        const publicData = await publicResponse.json();
+        publicRecipes = publicData.recipes || [];
+      }
+      
+      // Combine recipes, marking source
+      const allRecipes = [
+        ...userRecipes.map(recipe => ({ ...recipe, source: 'personal' })),
+        ...publicRecipes.map(recipe => ({ ...recipe, source: 'public' }))
+      ];
+      
+      setUserRecipes(allRecipes);
     } catch (err) {
-      console.error("Fetch User Recipes error:", err);
+      console.error("Fetch Recipes error:", err);
     }
   }, []);
 
@@ -122,12 +145,17 @@ const MealPlannerPage = () => {
 
   const handleAddMealPlanEntry = async () => {
     if (!selectedSlotInfo || !selectedRecipeId || !selectedMealType || modalPlannedServings < 1) {
-      alert('Please select a recipe, meal type, and specify valid servings.');
+      setError('Please select a recipe, meal type, and specify valid servings.');
+      setTimeout(() => setError(''), 3000);
       return;
     }
     const token = localStorage.getItem('token');
-    // Format to YYYY-MM-DD to represent the local date selected, avoiding timezone shifts for all-day events
-    const dateToSend = moment(selectedSlotInfo.date).format('YYYY-MM-DD');
+    // Extract date components directly to avoid timezone conversion issues
+    const selectedDate = selectedSlotInfo.date;
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateToSend = `${year}-${month}-${day}`;
     console.log('[MealPlanner DEBUG] Adding entry for date (raw):', selectedSlotInfo.date);
     console.log('[MealPlanner DEBUG] Adding entry for date (YYYY-MM-DD):', dateToSend);
 
@@ -149,12 +177,37 @@ const MealPlannerPage = () => {
         const errData = await response.json();
         throw new Error(errData.message || 'Failed to add meal plan entry.');
       }
+      
+      const newMealPlan = await response.json();
+      console.log('[MealPlanner DEBUG] Received new meal plan:', newMealPlan);
+      
+      // Convert the new meal plan to a calendar event and add it immediately
+      const dateStr = newMealPlan.date;
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      
+      // Safe access to recipe name with fallback
+      const recipeName = newMealPlan.recipe?.name || 'Unknown Recipe';
+      console.log('[MealPlanner DEBUG] Recipe name:', recipeName);
+      
+      const newEvent = {
+        id: newMealPlan.mealPlanId,
+        title: `${newMealPlan.mealType}: ${recipeName} (${newMealPlan.plannedServings} serv.)`,
+        start: localDate,
+        end: localDate,
+        allDay: true,
+        resource: newMealPlan,
+      };
+      
+      // Add the new event to the existing events
+      setMyEvents(prevEvents => [...prevEvents, newEvent]);
+      
       setShowAddModal(false);
-      fetchMealPlans();
-      alert('Meal plan entry added successfully!');
+      // Meal plan entry added silently
     } catch (err) {
       console.error("Add Meal Plan Entry error:", err);
-      alert(`Error: ${err.message}`);
+      setError(err.message);
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -179,10 +232,11 @@ const MealPlannerPage = () => {
         throw new Error(errorMessage);
       }
       fetchMealPlans();
-      alert('Meal plan entry removed successfully!');
+      // Meal plan entry removed silently
     } catch (err) {
       console.error("Delete Meal Plan Entry error:", err.message);
-      alert(`Error: ${err.message}`); setError(err.message);
+      setError(err.message);
+      setTimeout(() => setError(''), 3000);
     } finally {
       setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null);
     }
@@ -194,7 +248,7 @@ const MealPlannerPage = () => {
         setMealPlanEntryToDelete({ id: event.id, title: event.title });
         setShowDeleteConfirmModal(true);
       } else {
-        alert(`Clicked: ${event.title}. No ID found for deletion options.`);
+        // No action for events without ID
       }
     },
     []
@@ -202,10 +256,14 @@ const MealPlannerPage = () => {
 
   const handleGenerateShoppingListFromPlan = () => {
     if (!shoppingListStartDate || !shoppingListEndDate) {
-      alert('Please select a valid start and end date for the shopping list.'); return;
+      setError('Please select a valid start and end date for the shopping list.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     if (moment(shoppingListEndDate).isBefore(moment(shoppingListStartDate))) {
-      alert('End date cannot be before start date.'); return;
+      setError('End date cannot be before start date.');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
     navigate(`/shopping-list?startDate=${shoppingListStartDate}&endDate=${shoppingListEndDate}`);
   };
@@ -290,15 +348,59 @@ const MealPlannerPage = () => {
         <Calendar
           localizer={localizer} events={myEvents} startAccessor="start" endAccessor="end"
           style={{ height: '100%' }} selectable onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
-          date={currentDate} view={currentView} onNavigate={(date) => setCurrentDate(date)} onView={(view) => setCurrentView(view)}
-          views={['month', 'week', 'day']}
+          date={currentDate} view="month" onNavigate={(date) => setCurrentDate(date)}
+          views={['month']}
         />
       </div>
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Meal to Plan">
         <div className="space-y-4">
           <div><label htmlFor="mealDate" className="block text-sm font-medium text-gray-700">Date</label><input type="text" id="mealDate" readOnly value={selectedSlotInfo ? moment(selectedSlotInfo.date).format('LL') : ''} className="mt-1 block w-full input-style"/></div>
-          <div><label htmlFor="mealTypeSelect" className="block text-sm font-medium text-gray-700">Meal Type</label><select id="mealTypeSelect" value={selectedMealType} onChange={(e) => setSelectedMealType(e.target.value)} className="mt-1 block w-full select-style"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
-          <div><label htmlFor="recipeSelect" className="block text-sm font-medium text-gray-700">Recipe</label><select id="recipeSelect" value={selectedRecipeId} onChange={(e) => handleRecipeSelectionChange(e.target.value)} className="mt-1 block w-full select-style"><option value="">-- Select a Recipe --</option>{userRecipes.map(recipe => (<option key={recipe.recipeId} value={recipe.recipeId}>{recipe.name} (Serves {recipe.servings || 'N/A'})</option>))}</select></div>
+          <div>
+            <label htmlFor="mealTypeSelect" className="block text-sm font-medium text-gray-700">Meal Type</label>
+            <select id="mealTypeSelect" value={selectedMealType} onChange={(e) => setSelectedMealType(e.target.value)} className="mt-1 block w-full select-style">
+              <option value="Breakfast">🌅 Breakfast</option>
+              <option value="Lunch">🍽️ Lunch</option>
+              <option value="Dinner">🌙 Dinner</option>
+              <option value="Snack">🍿 Snack</option>
+              <option value="Tea Time">☕ Tea Time</option>
+              <option value="Dessert">🧁 Dessert</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="recipeSelect" className="block text-sm font-medium text-gray-700">Recipe</label>
+            <select 
+              id="recipeSelect" 
+              value={selectedRecipeId} 
+              onChange={(e) => handleRecipeSelectionChange(e.target.value)} 
+              className="mt-1 block w-full select-style"
+            >
+              <option value="">-- Select a Recipe --</option>
+              {userRecipes.filter(recipe => recipe.source === 'personal').length > 0 && (
+                <optgroup label="📝 My Recipes">
+                  {userRecipes
+                    .filter(recipe => recipe.source === 'personal')
+                    .map(recipe => (
+                      <option key={recipe.recipeId} value={recipe.recipeId}>
+                        {recipe.name} (Serves {recipe.servings || 'N/A'})
+                      </option>
+                    ))
+                  }
+                </optgroup>
+              )}
+              {userRecipes.filter(recipe => recipe.source === 'public').length > 0 && (
+                <optgroup label="🌍 Public Recipes">
+                  {userRecipes
+                    .filter(recipe => recipe.source === 'public')
+                    .map(recipe => (
+                      <option key={recipe.recipeId} value={recipe.recipeId}>
+                        {recipe.name} (Serves {recipe.servings || 'N/A'}) {recipe.category ? `- ${recipe.category}` : ''}
+                      </option>
+                    ))
+                  }
+                </optgroup>
+              )}
+            </select>
+          </div>
           <div><label htmlFor="plannedServings" className="block text-sm font-medium text-gray-700">Servings for this meal</label><input type="number" id="plannedServings" name="plannedServings" value={modalPlannedServings} onChange={(e) => setModalPlannedServings(parseInt(e.target.value, 10) || 1)} min="1" required className="mt-1 block w-full input-style"/></div>
           <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button><button type="button" onClick={handleAddMealPlanEntry} className="btn-primary">Add to Plan</button></div>
         </div>

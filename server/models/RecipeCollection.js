@@ -139,6 +139,45 @@ async function getPublicRecipeCollections(limit = 10, lastEvaluatedKey = null) {
   }
 }
 
+// Search public collections with text query
+async function searchPublicCollections(searchTerm, limit = 20, lastEvaluatedKey = null) {
+  if (!searchTerm || !searchTerm.trim()) {
+    return getPublicRecipeCollections(limit, lastEvaluatedKey);
+  }
+
+  const params = {
+    TableName: RECIPE_COLLECTIONS_TABLE_NAME,
+    IndexName: 'GSI2PK-GSI2SK-index',
+    KeyConditionExpression: "GSI2PK = :isPublic",
+    FilterExpression: "contains(#name, :searchTerm) OR contains(description, :searchTerm) OR contains(authorUsername, :searchTerm)",
+    ExpressionAttributeNames: {
+      "#name": "name", // 'name' might be a reserved word in DynamoDB
+    },
+    ExpressionAttributeValues: {
+      ":isPublic": `PUBLIC#TRUE`,
+      ":searchTerm": searchTerm.toLowerCase(),
+    },
+    ScanIndexForward: false, // Newest first
+    Limit: limit,
+  };
+
+  if (lastEvaluatedKey) {
+    params.ExclusiveStartKey = lastEvaluatedKey;
+  }
+
+  try {
+    const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
+    const collections = Items.map(item => {
+      const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = item;
+      return collection;
+    });
+    return { collections, lastEvaluatedKey: LastEvaluatedKey };
+  } catch (error) {
+    console.error("Error searching public collections:", error);
+    throw new Error('Could not search public collections.');
+  }
+}
+
 async function updateRecipeCollection(collectionId, authorId, updateData) {
   const timestamp = new Date().toISOString();
   let updateExpression = 'set ';
@@ -266,6 +305,7 @@ module.exports = {
   getRecipeCollectionById,
   getRecipeCollectionsByAuthor,
   getPublicRecipeCollections,
+  searchPublicCollections,
   updateRecipeCollection,
   addRecipeToCollection,
   removeRecipeFromCollection,

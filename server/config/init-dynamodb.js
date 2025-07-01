@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config();
+
 const { DynamoDBClient, CreateTableCommand, ListTablesCommand, DescribeTableCommand } = require("@aws-sdk/client-dynamodb");
 const { USERS_TABLE_NAME } = require('../models/User'); // Get the table name from User model
 const { RECIPES_TABLE_NAME } = require('../models/Recipe'); // Get the table name from Recipe model

@@ -8,6 +8,7 @@ const {
   getRecipeCollectionById,
   getRecipeCollectionsByAuthor,
   getPublicRecipeCollections,
+  searchPublicCollections,
   updateRecipeCollection,
   deleteRecipeCollection,
   addRecipeToCollection,
@@ -115,6 +116,28 @@ router.get('/public', async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching public collections:', err);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET /api/collections/search
+// @desc    Search public collections
+// @access  Public
+router.get('/search', async (req, res) => {
+  const searchTerm = req.query.q || '';
+  const limit = parseInt(req.query.limit) || 20;
+  const lastEvaluatedKey = req.query.lek ? JSON.parse(decodeURIComponent(req.query.lek)) : null;
+
+  try {
+    const { collections, lastEvaluatedKey: newLek } = await searchPublicCollections(searchTerm, limit, lastEvaluatedKey);
+
+    res.json({
+      collections,
+      searchTerm,
+      nextLek: newLek ? encodeURIComponent(JSON.stringify(newLek)) : null,
+    });
+  } catch (err) {
+    console.error('Error searching public collections:', err.message);
     res.status(500).send('Server Error');
   }
 });

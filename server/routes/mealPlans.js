@@ -11,12 +11,28 @@ const {
 } = require('../models/MealPlan');
 const { getRecipeById } = require('../models/Recipe'); // To verify recipe existence
 
+// Helper to format date to YYYY-MM-DD string
+const formatDateToYYYYMMDD = (date) => {
+  // If date is already a YYYY-MM-DD string, return it as-is
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // @route   POST /api/mealplans
 // @desc    Add a recipe to a meal plan slot
 // @access  Private
 router.post('/', authMiddleware, async (req, res) => {
   const { date, mealType, recipeId, plannedServings } = req.body;
   const userId = req.user.id;
+
+  console.log('[MealPlanner] Adding meal:', { date, mealType, userId });
 
   // TODO: Add comprehensive validation for date format, mealType enum, recipeId format, plannedServings
   if (!date || !mealType || !recipeId || plannedServings === undefined) {
@@ -29,8 +45,26 @@ router.post('/', authMiddleware, async (req, res) => {
 
   try {
     // Verify the recipe exists
-    const recipe = await getRecipeById(recipeId.startsWith('RECIPE#') ? recipeId.substring(7) : recipeId); // Adjust if recipeId includes prefix
+    const plainRecipeId = recipeId.startsWith('RECIPE#') ? recipeId.substring(7) : recipeId;
+    console.log('[MealPlanner] Looking up recipe with ID:', plainRecipeId);
+    console.log('[MealPlanner] Original recipeId from request:', recipeId);
+    
+    const recipe = await getRecipeById(plainRecipeId);
+    console.log('[MealPlanner] Recipe lookup result:', recipe ? 'FOUND' : 'NOT FOUND');
+    
+    if (recipe) {
+      console.log('[MealPlanner] Recipe details:', {
+        name: recipe.name,
+        recipeId: recipe.recipeId,
+        isPublic: recipe.isPublic,
+        authorId: recipe.authorId,
+        ingredientsCount: recipe.ingredients?.length || 0
+      });
+      console.log('[MealPlanner] Recipe ingredients:', recipe.ingredients?.map(ing => `${ing.quantity} ${ing.unit} ${ing.name}`) || 'NO INGREDIENTS');
+    }
+    
     if (!recipe) {
+      console.log('[MealPlanner] Recipe not found for ID:', plainRecipeId);
       return res.status(404).json({ message: 'Recipe not found.' });
     }
     // Optional: If recipes are strictly private, ensure user owns it or it's public
@@ -38,18 +72,52 @@ router.post('/', authMiddleware, async (req, res) => {
     //   return res.status(403).json({ message: 'User does not own this recipe or recipe is not public.' });
     // }
 
+    const finalRecipeId = recipe.recipeId.startsWith('RECIPE#') ? recipe.recipeId : `RECIPE#${recipe.recipeId}`;
+    
     const newEntryData = {
       userId,
       date, // The model function will format this
       mealType,
-      recipeId: recipe.recipeId.startsWith('RECIPE#') ? recipe.recipeId : `RECIPE#${recipe.recipeId}`, // Ensure prefix
+      recipeId: finalRecipeId, // Ensure prefix
       plannedServings: servings,
     };
+    
+    console.log('[MealPlanner] Creating meal plan entry with data:', {
+      userId,
+      date,
+      mealType,
+      recipeId: finalRecipeId,
+      plannedServings: servings,
+      recipeName: recipe.name
+    });
 
     const mealPlanEntry = await createMealPlanEntry(newEntryData);
-    // The mealPlanEntry returned from createMealPlanEntry is already cleaned of PK/SK
-    // If recipe details are needed in response, an additional getRecipeById would be required here.
-    res.status(201).json(mealPlanEntry);
+    console.log('[MealPlanner] Successfully created meal for date:', mealPlanEntry.date);
+    
+    // Include recipe details in the response for immediate UI update
+    // Ensure we always have a recipe object, even if lookup failed
+    const safeRecipe = recipe || { 
+      recipeId: plainRecipeId, 
+      name: 'Recipe Loading...', 
+      description: '', 
+      servings: 1, 
+      category: 'Other' 
+    };
+    
+    const mealPlanWithRecipe = {
+      ...mealPlanEntry,
+      recipe: {
+        recipeId: safeRecipe.recipeId || safeRecipe.id || plainRecipeId,
+        name: safeRecipe.name || 'Recipe Loading...',
+        description: safeRecipe.description || '',
+        servings: safeRecipe.servings || 1,
+        category: safeRecipe.category || 'Other'
+      }
+    };
+    
+    console.log('[MealPlanner] Final response recipe object:', mealPlanWithRecipe.recipe);
+    
+    res.status(201).json(mealPlanWithRecipe);
 
   } catch (err) {
     console.error('Error creating meal plan entry:', err.message);
@@ -150,16 +218,19 @@ router.post('/copy', authMiddleware, async (req, res) => {
     }
 
     const newMealPlanEntriesData = allSourceEntries.map(entry => {
-      const sourceEntryDate = new Date(entry.date + "T00:00:00"); // Ensure it's parsed as local date
-      const timeDiff = sourceEntryDate.getTime() - new Date(formatDateToYYYYMMDD(sStartDate) + "T00:00:00").getTime();
+      // Use local date strings to avoid timezone issues
+      const sourceEntryDate = new Date(entry.date + "T00:00:00");
+      const sourceStartDate = new Date(formatDateToYYYYMMDD(sStartDate) + "T00:00:00");
+      const timeDiff = sourceEntryDate.getTime() - sourceStartDate.getTime();
       const dayOffset = Math.floor(timeDiff / (1000 * 3600 * 24));
 
-      const newEntryDate = new Date(dStartDate);
-      newEntryDate.setDate(dStartDate.getDate() + dayOffset);
+      // Calculate new date by adding offset to destination start date
+      const destStartDate = new Date(formatDateToYYYYMMDD(dStartDate) + "T00:00:00");
+      const newEntryDate = new Date(destStartDate.getTime() + (dayOffset * 24 * 60 * 60 * 1000));
 
       return {
         userId,
-        date: formatDateToYYYYMMDD(newEntryDate), // Pass formatted date string
+        date: formatDateToYYYYMMDD(newEntryDate),
         mealType: entry.mealType,
         recipeId: entry.recipeId,
         plannedServings: entry.plannedServings,

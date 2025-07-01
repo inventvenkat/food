@@ -10,6 +10,11 @@ services:
     command: ["/bin/bash", "-c", "/usr/local/bin/wait-for-it.sh server:3001 -t 60 -- nginx -g 'daemon off;'"]
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   server:
     build:
@@ -17,12 +22,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3002:3001" # Changed host port to 3002 to avoid conflict
+    env_file:
+      - ./server/.env
     environment:
-      # For current Mongoose setup (pre-DynamoDB refactor):
-      # - MONGODB_URI=mongodb://mongo:27017/recipe_app_db # Points to the mongo service below
-      - JWT_SECRET=yourSuperSecretKeyForJWTs # Change this in a real .env file for compose
-      - APP_PORT=3001
-      # --- Lines to uncomment/modify AFTER refactoring server for DynamoDB Local ---
+      # Override specific values for Docker network
       - DYNAMODB_ENDPOINT_OVERRIDE=http://dynamodb-local:8000
       - AWS_ACCESS_KEY_ID=dummy # For DynamoDB Local
       - AWS_SECRET_ACCESS_KEY=dummy # For DynamoDB Local
@@ -35,6 +38,11 @@ services:
     command: ["/usr/local/bin/wait-for-it.sh", "dynamodb-local:8000", "--", "node", "index.js"]
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # mongo: # MongoDB service for current setup - Commented out for DynamoDB setup
   #   image: mongo:latest
@@ -49,11 +57,22 @@ services:
     image: amazon/dynamodb-local:latest
     ports:
       - "8000:8000" # Expose DynamoDB Local on host port 8000
-    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory" # Run in-memory
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    # For development, using in-memory is more reliable and faster
+    # If you need persistence, uncomment the volumes and dbPath options below:
+    # command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
     # volumes:
-      # - dynamodb-local-data:/home/dynamodblocal/data # Persist DynamoDB data locally
+    #   - dynamodb-local-data:/home/dynamodblocal/data
     networks:
       - app-network
+    environment:
+      - JAVA_OPTS=-Djava.library.path=./DynamoDBLocal_lib
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   mongo-data:
