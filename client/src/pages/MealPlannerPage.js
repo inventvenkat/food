@@ -7,6 +7,153 @@ import Modal from '../components/Modal';
 
 const localizer = momentLocalizer(moment);
 
+const SidebarContent = ({ 
+  showAddModal, 
+  setShowAddModal, 
+  setSelectedSlotInfo, 
+  setSelectedRecipeId, 
+  setSelectedMealType, 
+  setModalPlannedServings,
+  navigate,
+  shoppingListStartDate,
+  setShoppingListStartDate,
+  shoppingListEndDate,
+  setShoppingListEndDate,
+  handleGenerateShoppingListFromPlan,
+  copySourceStart,
+  setCopySourceStart,
+  copySourceEnd,
+  setCopySourceEnd,
+  copyDestStart,
+  setCopyDestStart,
+  handleCopyMealPlan,
+  copyStatus
+}) => (
+  <div className="space-y-6">
+    {/* Quick Actions */}
+    <div className="card p-6">
+      <h2 className="heading-sm text-neutral-900 mb-4">Quick Actions</h2>
+      <div className="space-y-3">
+        <button
+          onClick={() => {
+            setSelectedSlotInfo({ date: new Date() });
+            setSelectedRecipeId('');
+            setSelectedMealType('Breakfast');
+            setModalPlannedServings(1);
+            setShowAddModal(true);
+          }}
+          className="btn-primary btn-sm w-full flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Meal
+        </button>
+        <button
+          onClick={() => navigate(`/shopping-list?startDate=${moment().format('YYYY-MM-DD')}&endDate=${moment().add(6, 'days').format('YYYY-MM-DD')}`)}
+          className="btn-secondary btn-sm w-full flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Week's Shopping List
+        </button>
+      </div>
+    </div>
+
+    {/* Shopping List Generator */}
+    <div className="card p-6">
+      <h2 className="heading-sm text-neutral-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Shopping List
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="shoppingListStartDate" className="block text-sm font-medium text-neutral-700 mb-1">Start Date</label>
+          <input 
+            type="date" 
+            id="shoppingListStartDate" 
+            value={shoppingListStartDate} 
+            onChange={(e) => setShoppingListStartDate(e.target.value)} 
+            className="input-style-sm w-full"
+          />
+        </div>
+        <div>
+          <label htmlFor="shoppingListEndDate" className="block text-sm font-medium text-neutral-700 mb-1">End Date</label>
+          <input 
+            type="date" 
+            id="shoppingListEndDate" 
+            value={shoppingListEndDate} 
+            onChange={(e) => setShoppingListEndDate(e.target.value)} 
+            className="input-style-sm w-full"
+          />
+        </div>
+        <button 
+          onClick={handleGenerateShoppingListFromPlan} 
+          className="btn-primary btn-sm w-full"
+        >
+          Generate List
+        </button>
+      </div>
+    </div>
+
+    {/* Copy Meal Plan */}
+    <div className="card p-6">
+      <h2 className="heading-sm text-neutral-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        Copy Meal Plan
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="copySourceStart" className="block text-sm font-medium text-neutral-700 mb-1">From (Start)</label>
+          <input 
+            type="date" 
+            id="copySourceStart" 
+            value={copySourceStart} 
+            onChange={(e) => setCopySourceStart(e.target.value)} 
+            className="input-style-sm w-full"
+          />
+        </div>
+        <div>
+          <label htmlFor="copySourceEnd" className="block text-sm font-medium text-neutral-700 mb-1">From (End)</label>
+          <input 
+            type="date" 
+            id="copySourceEnd" 
+            value={copySourceEnd} 
+            onChange={(e) => setCopySourceEnd(e.target.value)} 
+            className="input-style-sm w-full"
+          />
+        </div>
+        <div>
+          <label htmlFor="copyDestStart" className="block text-sm font-medium text-neutral-700 mb-1">To (Start)</label>
+          <input 
+            type="date" 
+            id="copyDestStart" 
+            value={copyDestStart} 
+            onChange={(e) => setCopyDestStart(e.target.value)} 
+            className="input-style-sm w-full"
+          />
+        </div>
+        <button 
+          onClick={handleCopyMealPlan} 
+          className="btn-secondary btn-sm w-full"
+        >
+          Copy Plan
+        </button>
+        {copyStatus && (
+          <p className={`text-sm ${copyStatus.startsWith('Error:') ? 'text-error' : 'text-success'}`}>
+            {copyStatus}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
 const MealPlannerPage = () => {
   const [myEvents, setMyEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +162,7 @@ const MealPlannerPage = () => {
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isControlsOpen, setIsControlsOpen] = useState(false); // State for collapsible section
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedSlotInfo, setSelectedSlotInfo] = useState(null);
@@ -299,65 +447,262 @@ const MealPlannerPage = () => {
     }
   };
 
-  if (loading) return <div className="text-center p-10">Loading Meal Planner...</div>;
-  if (error) return <div className="text-center p-10 text-red-600">Error: {error}</div>;
-
-  const toggleControls = () => setIsControlsOpen(!isControlsOpen);
+  if (loading) return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="loading-pulse w-12 h-12 rounded-full mx-auto mb-4"></div>
+        <p className="body-base">Loading your meal planner...</p>
+      </div>
+    </div>
+  );
+  
+  if (error) return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-12 h-12 bg-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <p className="body-base text-error">Error: {error}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-6">Meal Planner</h1>
-
-      <div className="mb-4">
-        <button
-          onClick={toggleControls}
-          className="w-full btn-secondary py-2 px-4 rounded-md flex items-center justify-center text-sm font-medium"
-        >
-          {isControlsOpen ? 'Hide Planner Tools' : 'Show Planner Tools'}
-          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ml-2 transform transition-transform ${isControlsOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
+    <div className="min-h-screen bg-neutral-50">
+      {/* Header */}
+      <div className="bg-white shadow-soft border-b border-neutral-200">
+        <div className="container-app py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="heading-lg text-neutral-900">Meal Planner</h1>
+              <p className="body-base text-neutral-600 mt-1">Plan your meals and generate shopping lists</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="btn-outline btn-sm xl:hidden flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Tools
+              </button>
+              <button
+                onClick={() => navigate('/shopping-list')}
+                className="btn-outline btn-sm flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Shopping Lists
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {isControlsOpen && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 bg-gray-100 rounded-lg shadow">
-          <div className="p-4 bg-white rounded-lg shadow-inner"> {/* Changed bg-gray-50 to bg-white for contrast */}
-            <h2 className="text-xl font-semibold mb-3 text-gray-700">Generate Shopping List</h2>
-            <div className="space-y-3">
-            <div><label htmlFor="shoppingListStartDate" className="block text-sm font-medium text-gray-700">Start Date:</label><input type="date" id="shoppingListStartDate" value={shoppingListStartDate} onChange={(e) => setShoppingListStartDate(e.target.value)} className="mt-1 input-style w-full"/></div>
-            <div><label htmlFor="shoppingListEndDate" className="block text-sm font-medium text-gray-700">End Date:</label><input type="date" id="shoppingListEndDate" value={shoppingListEndDate} onChange={(e) => setShoppingListEndDate(e.target.value)} className="mt-1 input-style w-full"/></div>
-            <button onClick={handleGenerateShoppingListFromPlan} className="btn-primary w-full">Get Shopping List</button>
+      <div className="container-app py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Mobile Sidebar Overlay */}
+          {isSidebarOpen && (
+            <div className="fixed inset-0 bg-neutral-900/50 backdrop-blur-sm z-40 xl:hidden" onClick={() => setIsSidebarOpen(false)}>
+              <div className="fixed inset-y-0 left-0 w-80 bg-white shadow-xl z-50 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="heading-sm text-neutral-900">Planner Tools</h2>
+                    <button
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="text-neutral-400 hover:text-neutral-600 p-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <SidebarContent 
+                    showAddModal={showAddModal}
+                    setShowAddModal={setShowAddModal}
+                    setSelectedSlotInfo={setSelectedSlotInfo}
+                    setSelectedRecipeId={setSelectedRecipeId}
+                    setSelectedMealType={setSelectedMealType}
+                    setModalPlannedServings={setModalPlannedServings}
+                    navigate={navigate}
+                    shoppingListStartDate={shoppingListStartDate}
+                    setShoppingListStartDate={setShoppingListStartDate}
+                    shoppingListEndDate={shoppingListEndDate}
+                    setShoppingListEndDate={setShoppingListEndDate}
+                    handleGenerateShoppingListFromPlan={handleGenerateShoppingListFromPlan}
+                    copySourceStart={copySourceStart}
+                    setCopySourceStart={setCopySourceStart}
+                    copySourceEnd={copySourceEnd}
+                    setCopySourceEnd={setCopySourceEnd}
+                    copyDestStart={copyDestStart}
+                    setCopyDestStart={setCopyDestStart}
+                    handleCopyMealPlan={handleCopyMealPlan}
+                    copyStatus={copyStatus}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Desktop Sidebar with Tools */}
+          <div className="xl:col-span-1 hidden xl:block">
+            <SidebarContent 
+              showAddModal={showAddModal}
+              setShowAddModal={setShowAddModal}
+              setSelectedSlotInfo={setSelectedSlotInfo}
+              setSelectedRecipeId={setSelectedRecipeId}
+              setSelectedMealType={setSelectedMealType}
+              setModalPlannedServings={setModalPlannedServings}
+              navigate={navigate}
+              shoppingListStartDate={shoppingListStartDate}
+              setShoppingListStartDate={setShoppingListStartDate}
+              shoppingListEndDate={shoppingListEndDate}
+              setShoppingListEndDate={setShoppingListEndDate}
+              handleGenerateShoppingListFromPlan={handleGenerateShoppingListFromPlan}
+              copySourceStart={copySourceStart}
+              setCopySourceStart={setCopySourceStart}
+              copySourceEnd={copySourceEnd}
+              setCopySourceEnd={setCopySourceEnd}
+              copyDestStart={copyDestStart}
+              setCopyDestStart={setCopyDestStart}
+              handleCopyMealPlan={handleCopyMealPlan}
+              copyStatus={copyStatus}
+            />
+          </div>
+
+          {/* Main Calendar */}
+          <div className="xl:col-span-3">
+            <div className="card p-6" style={{ height: '75vh' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="heading-sm text-neutral-900">
+                    {moment(currentDate).format('MMMM YYYY')}
+                  </h2>
+                  <p className="body-sm text-neutral-500 mt-1">Click a date to add meals, click meals to remove them</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentDate(moment(currentDate).subtract(1, 'month').toDate())}
+                    className="btn-ghost btn-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setCurrentDate(new Date())}
+                    className="btn-ghost btn-sm"
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setCurrentDate(moment(currentDate).add(1, 'month').toDate())}
+                    className="btn-ghost btn-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Meal Type Legend */}
+              <div className="flex flex-wrap gap-3 mb-4 p-3 bg-neutral-50 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-primary-100 border border-primary-500"></div>
+                  <span className="text-xs text-neutral-600">🌅 Breakfast</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-secondary-100 border border-secondary-500"></div>
+                  <span className="text-xs text-neutral-600">🍽️ Lunch</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-500"></div>
+                  <span className="text-xs text-neutral-600">🌙 Dinner</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-purple-100 border border-purple-500"></div>
+                  <span className="text-xs text-neutral-600">🍿 Snack</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-amber-100 border border-amber-500"></div>
+                  <span className="text-xs text-neutral-600">☕ Tea</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-500"></div>
+                  <span className="text-xs text-neutral-600">🧁 Dessert</span>
+                </div>
+              </div>
+              <div style={{ height: 'calc(100% - 140px)' }}>
+                <Calendar
+                  localizer={localizer} 
+                  events={myEvents} 
+                  startAccessor="start" 
+                  endAccessor="end"
+                  style={{ height: '100%' }} 
+                  selectable 
+                  onSelectSlot={handleSelectSlot} 
+                  onSelectEvent={handleSelectEvent}
+                  date={currentDate} 
+                  view="month" 
+                  onNavigate={(date) => setCurrentDate(date)}
+                  views={['month']}
+                  eventPropGetter={(event) => ({
+                    style: {
+                      backgroundColor: event.resource?.mealType === 'Breakfast' ? '#fef7ed' : 
+                                      event.resource?.mealType === 'Lunch' ? '#f0fdf4' :
+                                      event.resource?.mealType === 'Dinner' ? '#eff6ff' :
+                                      event.resource?.mealType === 'Snack' ? '#fdf4ff' :
+                                      event.resource?.mealType === 'Tea Time' ? '#fffbeb' :
+                                      event.resource?.mealType === 'Dessert' ? '#fef2f2' : '#f9fafb',
+                      border: `1px solid ${event.resource?.mealType === 'Breakfast' ? '#ed7514' : 
+                                          event.resource?.mealType === 'Lunch' ? '#22c55e' :
+                                          event.resource?.mealType === 'Dinner' ? '#3b82f6' :
+                                          event.resource?.mealType === 'Snack' ? '#a855f7' :
+                                          event.resource?.mealType === 'Tea Time' ? '#f59e0b' :
+                                          event.resource?.mealType === 'Dessert' ? '#ef4444' : '#6b7280'}`,
+                      color: event.resource?.mealType === 'Breakfast' ? '#b8420b' : 
+                             event.resource?.mealType === 'Lunch' ? '#15803d' :
+                             event.resource?.mealType === 'Dinner' ? '#1e40af' :
+                             event.resource?.mealType === 'Snack' ? '#7c2d12' :
+                             event.resource?.mealType === 'Tea Time' ? '#92400e' :
+                             event.resource?.mealType === 'Dessert' ? '#b91c1c' : '#374151',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      padding: '2px 6px'
+                    }
+                  })}
+                />
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="p-4 bg-gray-50 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-3 text-gray-700">Copy Meal Plan</h2>
-          <div className="space-y-3">
-            <div><label htmlFor="copySourceStart" className="block text-sm font-medium text-gray-700">Copy From (Start Date):</label><input type="date" id="copySourceStart" value={copySourceStart} onChange={(e) => setCopySourceStart(e.target.value)} className="mt-1 input-style w-full"/></div>
-            <div><label htmlFor="copySourceEnd" className="block text-sm font-medium text-gray-700">Copy From (End Date):</label><input type="date" id="copySourceEnd" value={copySourceEnd} onChange={(e) => setCopySourceEnd(e.target.value)} className="mt-1 input-style w-full"/></div>
-            <div><label htmlFor="copyDestStart" className="block text-sm font-medium text-gray-700">Paste To (Start Date):</label><input type="date" id="copyDestStart" value={copyDestStart} onChange={(e) => setCopyDestStart(e.target.value)} className="mt-1 input-style w-full"/></div>
-            <button onClick={handleCopyMealPlan} className="btn-primary w-full">Copy Plan</button>
-          </div>
-          {copyStatus && <p className={`mt-2 text-sm ${copyStatus.startsWith('Error:') ? 'text-red-600' : 'text-green-600'}`}>{copyStatus}</p>}
-        </div>
-        </div>
-      )}
-
-      <div style={{ height: '70vh' }} className="bg-white p-4 shadow-lg rounded-lg">
-        <Calendar
-          localizer={localizer} events={myEvents} startAccessor="start" endAccessor="end"
-          style={{ height: '100%' }} selectable onSelectSlot={handleSelectSlot} onSelectEvent={handleSelectEvent}
-          date={currentDate} view="month" onNavigate={(date) => setCurrentDate(date)}
-          views={['month']}
-        />
       </div>
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Meal to Plan">
-        <div className="space-y-4">
-          <div><label htmlFor="mealDate" className="block text-sm font-medium text-gray-700">Date</label><input type="text" id="mealDate" readOnly value={selectedSlotInfo ? moment(selectedSlotInfo.date).format('LL') : ''} className="mt-1 block w-full input-style"/></div>
+        <div className="space-y-6">
           <div>
-            <label htmlFor="mealTypeSelect" className="block text-sm font-medium text-gray-700">Meal Type</label>
-            <select id="mealTypeSelect" value={selectedMealType} onChange={(e) => setSelectedMealType(e.target.value)} className="mt-1 block w-full select-style">
+            <label htmlFor="mealDate" className="block text-sm font-medium text-neutral-700 mb-2">Date</label>
+            <input 
+              type="text" 
+              id="mealDate" 
+              readOnly 
+              value={selectedSlotInfo ? moment(selectedSlotInfo.date).format('dddd, MMMM Do, YYYY') : ''} 
+              className="input-style w-full bg-neutral-50 text-neutral-600"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="mealTypeSelect" className="block text-sm font-medium text-neutral-700 mb-2">Meal Type</label>
+            <select 
+              id="mealTypeSelect" 
+              value={selectedMealType} 
+              onChange={(e) => setSelectedMealType(e.target.value)} 
+              className="select-style w-full"
+            >
               <option value="Breakfast">🌅 Breakfast</option>
               <option value="Lunch">🍽️ Lunch</option>
               <option value="Dinner">🌙 Dinner</option>
@@ -366,13 +711,14 @@ const MealPlannerPage = () => {
               <option value="Dessert">🧁 Dessert</option>
             </select>
           </div>
+          
           <div>
-            <label htmlFor="recipeSelect" className="block text-sm font-medium text-gray-700">Recipe</label>
+            <label htmlFor="recipeSelect" className="block text-sm font-medium text-neutral-700 mb-2">Recipe</label>
             <select 
               id="recipeSelect" 
               value={selectedRecipeId} 
               onChange={(e) => handleRecipeSelectionChange(e.target.value)} 
-              className="mt-1 block w-full select-style"
+              className="select-style w-full"
             >
               <option value="">-- Select a Recipe --</option>
               {userRecipes.filter(recipe => recipe.source === 'personal').length > 0 && (
@@ -401,17 +747,72 @@ const MealPlannerPage = () => {
               )}
             </select>
           </div>
-          <div><label htmlFor="plannedServings" className="block text-sm font-medium text-gray-700">Servings for this meal</label><input type="number" id="plannedServings" name="plannedServings" value={modalPlannedServings} onChange={(e) => setModalPlannedServings(parseInt(e.target.value, 10) || 1)} min="1" required className="mt-1 block w-full input-style"/></div>
-          <div className="flex justify-end space-x-3 pt-4"><button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button><button type="button" onClick={handleAddMealPlanEntry} className="btn-primary">Add to Plan</button></div>
+          
+          <div>
+            <label htmlFor="plannedServings" className="block text-sm font-medium text-neutral-700 mb-2">Servings for this meal</label>
+            <input 
+              type="number" 
+              id="plannedServings" 
+              name="plannedServings" 
+              value={modalPlannedServings} 
+              onChange={(e) => setModalPlannedServings(parseInt(e.target.value, 10) || 1)} 
+              min="1" 
+              required 
+              className="input-style w-full"
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
+            <button 
+              type="button" 
+              onClick={() => setShowAddModal(false)} 
+              className="btn-ghost"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={handleAddMealPlanEntry} 
+              className="btn-primary"
+              disabled={!selectedRecipeId}
+            >
+              Add to Plan
+            </button>
+          </div>
         </div>
       </Modal>
       {mealPlanEntryToDelete && (
-        <Modal isOpen={showDeleteConfirmModal} onClose={() => { setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null); }} title="Confirm Deletion">
-          <div>
-            <p className="text-sm text-gray-600 mb-4">Are you sure you want to remove "{mealPlanEntryToDelete.title}" from your meal plan?</p>
-            <div className="flex justify-end space-x-3">
-              <button type="button" onClick={() => { setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null); }} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Cancel</button>
-              <button type="button" onClick={confirmDeleteMealPlanEntry} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Delete</button>
+        <Modal isOpen={showDeleteConfirmModal} onClose={() => { setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null); }} title="Remove Meal">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-error/5 rounded-xl border border-error/20">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-error">Are you sure?</h4>
+                <p className="text-sm text-neutral-600 mt-1">
+                  This will remove "{mealPlanEntryToDelete.title}" from your meal plan. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => { setShowDeleteConfirmModal(false); setMealPlanEntryToDelete(null); }} 
+                className="btn-ghost"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={confirmDeleteMealPlanEntry} 
+                className="bg-error hover:bg-error/90 text-white font-medium py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error"
+              >
+                Remove Meal
+              </button>
             </div>
           </div>
         </Modal>
