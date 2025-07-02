@@ -75,7 +75,8 @@ async function getRecipeCollectionById(collectionId) {
     const { Item } = await docClient.send(new GetCommand(params));
     if (Item) {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = Item;
-      return collection;
+      // Map collectionId to _id for frontend compatibility (MongoDB format)
+      return { ...collection, _id: collection.collectionId };
     }
     return null;
   } catch (error) {
@@ -104,7 +105,8 @@ async function getRecipeCollectionsByAuthor(authorId, limit = 10, lastEvaluatedK
     console.log(`[DEBUG] getRecipeCollectionsByAuthor - Raw Items from DynamoDB: ${JSON.stringify(Items, null, 2)}`);
     const collections = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = item;
-      return collection;
+      // Map collectionId to _id for frontend compatibility (MongoDB format)
+      return { ...collection, _id: collection.collectionId };
     });
     return { collections, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
@@ -130,7 +132,8 @@ async function getPublicRecipeCollections(limit = 10, lastEvaluatedKey = null) {
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     const collections = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = item;
-      return collection;
+      // Map collectionId to _id for frontend compatibility (MongoDB format)
+      return { ...collection, _id: collection.collectionId };
     });
     return { collections, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
@@ -169,7 +172,8 @@ async function searchPublicCollections(searchTerm, limit = 20, lastEvaluatedKey 
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     const collections = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, ...collection } = item;
-      return collection;
+      // Map collectionId to _id for frontend compatibility (MongoDB format)
+      return { ...collection, _id: collection.collectionId };
     });
     return { collections, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {

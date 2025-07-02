@@ -98,7 +98,8 @@ async function getRecipeById(recipeId) {
           authorId: recipe.authorId,
           ingredientsCount: recipe.ingredients?.length || 0
         });
-        return recipe;
+        // Map recipeId to _id for frontend compatibility (MongoDB format)
+        return { ...recipe, _id: recipe.recipeId };
       } else {
         console.log('[Recipe Model] Recipe not found in DB for ID:', recipeId);
         return null;
@@ -129,7 +130,8 @@ async function getRecipesByAuthor(authorId, limit = 10, lastEvaluatedKey = null)
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     const recipes = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = item;
-      return recipe;
+      // Map recipeId to _id for frontend compatibility (MongoDB format)
+      return { ...recipe, _id: recipe.recipeId };
     });
     return { recipes, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
@@ -160,7 +162,8 @@ async function getPublicRecipes(limit = 10, lastEvaluatedKey = null) {
       const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
       const recipes = Items.map(item => {
         const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = item;
-        return recipe;
+        // Map recipeId to _id for frontend compatibility (MongoDB format)
+        return { ...recipe, _id: recipe.recipeId };
       });
       return { recipes, lastEvaluatedKey: LastEvaluatedKey };
     } catch (error) {
@@ -200,7 +203,8 @@ async function searchPublicRecipes(searchTerm, limit = 20, lastEvaluatedKey = nu
     const { Items, LastEvaluatedKey } = await docClient.send(new QueryCommand(params));
     const recipes = Items.map(item => {
       const { PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, GSI3PK, GSI3SK, ...recipe } = item;
-      return recipe;
+      // Map recipeId to _id for frontend compatibility (MongoDB format)
+      return { ...recipe, _id: recipe.recipeId };
     });
     return { recipes, lastEvaluatedKey: LastEvaluatedKey };
   } catch (error) {
